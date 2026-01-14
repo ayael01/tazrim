@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tazrim-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tazrim
+      POSTGRES_USER: tazrim
+      POSTGRES_PASSWORD: tazrim
+    ports:
+      - "5432:5432"
+    volumes:
+      - tazrim_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tazrim -d tazrim"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tazrim_pgdata:

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+
+# Virtualenv
+.venv/
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Docker
+*.pid
+
+# Editor
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Data
+*.csv
