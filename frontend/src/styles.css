@@ -75,6 +75,26 @@ body {
   margin-bottom: 36px;
 }
 
+.year-picker {
+  margin-top: 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.year-picker input {
+  margin-left: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  width: 110px;
+}
+
+.helper {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -120,35 +140,150 @@ h1 {
   font-size: 20px;
 }
 
-.controls {
+.dashboard-grid {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.card h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.upload-card {
+  grid-column: span 4;
+  display: grid;
+  gap: 16px;
+}
+
+.upload-card form {
+  display: grid;
+  gap: 12px;
+}
+
+.upload-card label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.upload-card input[type="month"],
+.upload-card input[type="file"] {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: var(--surface-muted);
+}
+
+.upload-card button {
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(120deg, var(--accent), var(--accent-deep));
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.upload-card .status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.upload-card .status.error {
+  color: var(--accent-deep);
+}
+
+.chart-card {
+  grid-column: span 4;
+}
+
+.unknown-card {
+  grid-column: span 4;
+  display: grid;
+  gap: 12px;
+}
+
+.unknown-list {
+  display: grid;
+  gap: 12px;
+}
+
+.unknown-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-muted);
 }
 
-.search input {
-  width: min(360px, 75vw);
-  padding: 12px 16px;
-  border-radius: 999px;
+.unknown-row strong {
+  display: block;
+  font-size: 14px;
+}
+
+.unknown-row span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.unknown-row select {
+  padding: 8px 10px;
+  border-radius: 10px;
   border: 1px solid var(--stroke);
   background: var(--surface);
+}
+
+.empty-state {
   font-size: 14px;
-  outline: none;
+  color: var(--muted);
 }
 
-.search input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(255, 138, 75, 0.2);
+.chart {
+  height: 220px;
 }
 
-.status {
-  display: flex;
+.list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
   gap: 10px;
-  align-items: center;
+  font-size: 14px;
+}
+
+.list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .pill {
@@ -166,32 +301,7 @@ h1 {
 }
 
 .table-card {
-  position: relative;
-  z-index: 1;
-  background: var(--surface);
-  border-radius: 24px;
-  padding: 24px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.table-header h2 {
-  margin: 0;
-  font-size: 20px;
-}
-
-.table-header p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
+  grid-column: span 12;
 }
 
 .table {
@@ -244,6 +354,12 @@ h1 {
   color: var(--muted);
 }
 
+.status-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 @keyframes float {
   0%,
   100% {
@@ -257,6 +373,16 @@ h1 {
 @media (max-width: 900px) {
   .hero {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-card,
+  .chart-card,
+  .table-card {
+    grid-column: span 1;
   }
 
   .table-row {

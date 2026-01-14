@@ -1,0 +1,162 @@
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func, extract
+from sqlalchemy.orm import Session
+
+from app.db.models import Category, Merchant, MerchantCategoryMap, Transaction
+from app.db.session import get_db
+from app.schemas.reports import (
+    CategoryTotal,
+    MerchantTotal,
+    MonthlyTotal,
+    MonthlyTrendResponse,
+    SummaryResponse,
+    TopCategoriesResponse,
+    TopMerchantsResponse,
+    YearsResponse,
+)
+
+router = APIRouter()
+
+
+def _year_or_default(year: Optional[int]) -> int:
+    if year is None:
+        return datetime.utcnow().year
+    return year
+
+
+@router.get("/summary", response_model=SummaryResponse)
+def summary(
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    db: Session = Depends(get_db),
+) -> SummaryResponse:
+    selected_year = _year_or_default(year)
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+
+    total_spend = (
+        db.query(func.coalesce(func.sum(amount_expr), 0))
+        .filter(extract("year", Transaction.transaction_date) == selected_year)
+        .scalar()
+    )
+
+    total_transactions = (
+        db.query(func.count(Transaction.id))
+        .filter(extract("year", Transaction.transaction_date) == selected_year)
+        .scalar()
+    )
+
+    monthly_count = (
+        db.query(func.count(func.distinct(func.date_trunc("month", Transaction.transaction_date))))
+        .filter(extract("year", Transaction.transaction_date) == selected_year)
+        .scalar()
+    ) or 0
+
+    average_monthly = total_spend / monthly_count if monthly_count else 0
+
+    uncategorized_merchants = (
+        db.query(func.count(func.distinct(Merchant.id)))
+        .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
+        .filter(MerchantCategoryMap.id.is_(None))
+        .scalar()
+    )
+
+    return SummaryResponse(
+        year=selected_year,
+        total_spend=total_spend,
+        average_monthly=average_monthly,
+        total_transactions=total_transactions,
+        uncategorized_merchants=uncategorized_merchants,
+    )
+
+
+@router.get("/top-categories", response_model=TopCategoriesResponse)
+def top_categories(
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    limit: int = Query(8, ge=1, le=50),
+    db: Session = Depends(get_db),
+) -> TopCategoriesResponse:
+    selected_year = _year_or_default(year)
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    category_name = func.coalesce(Category.name, "Uncategorized")
+
+    rows = (
+        db.query(category_name.label("name"), func.sum(amount_expr).label("total"))
+        .select_from(Transaction)
+        .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
+        .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
+        .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
+        .filter(extract("year", Transaction.transaction_date) == selected_year)
+        .group_by(category_name)
+        .order_by(func.sum(amount_expr).desc())
+        .limit(limit)
+        .all()
+    )
+
+    return TopCategoriesResponse(
+        year=selected_year,
+        items=[CategoryTotal(name=row.name, total=row.total) for row in rows],
+    )
+
+
+@router.get("/top-merchants", response_model=TopMerchantsResponse)
+def top_merchants(
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    limit: int = Query(8, ge=1, le=50),
+    db: Session = Depends(get_db),
+) -> TopMerchantsResponse:
+    selected_year = _year_or_default(year)
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
+
+    rows = (
+        db.query(merchant_name.label("name"), func.sum(amount_expr).label("total"))
+        .select_from(Transaction)
+        .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
+        .filter(extract("year", Transaction.transaction_date) == selected_year)
+        .group_by(merchant_name)
+        .order_by(func.sum(amount_expr).desc())
+        .limit(limit)
+        .all()
+    )
+
+    return TopMerchantsResponse(
+        year=selected_year,
+        items=[MerchantTotal(name=row.name, total=row.total) for row in rows],
+    )
+
+
+@router.get("/monthly-trend", response_model=MonthlyTrendResponse)
+def monthly_trend(
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    db: Session = Depends(get_db),
+) -> MonthlyTrendResponse:
+    selected_year = _year_or_default(year)
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    month_bucket = func.date_trunc("month", Transaction.transaction_date)
+    month_label = func.to_char(month_bucket, "YYYY-MM")
+
+    rows = (
+        db.query(month_label.label("month"), func.sum(amount_expr).label("total"))
+        .filter(extract("year", Transaction.transaction_date) == selected_year)
+        .group_by(month_bucket, month_label)
+        .order_by(month_bucket)
+        .all()
+    )
+
+    items = [
+        MonthlyTotal(month=row.month, total=row.total) for row in rows
+    ]
+
+    return MonthlyTrendResponse(year=selected_year, items=items)
+@router.get("/years", response_model=YearsResponse)
+def available_years(db: Session = Depends(get_db)) -> YearsResponse:
+    rows = (
+        db.query(func.extract("year", Transaction.transaction_date).label("year"))
+        .distinct()
+        .order_by("year")
+        .all()
+    )
+    years = [int(row.year) for row in rows if row.year is not None]
+    return YearsResponse(years=years)
