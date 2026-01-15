@@ -66,8 +66,11 @@ export default function MerchantsReport() {
   const [years, setYears] = useState([]);
   const [limit, setLimit] = useState(6);
   const [items, setItems] = useState([]);
-  const [totals, setTotals] = useState([]);
+  const [merchants, setMerchants] = useState([]);
   const [filter, setFilter] = useState("");
+  const [listOffset, setListOffset] = useState(0);
+  const [listLoading, setListLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -91,19 +94,16 @@ export default function MerchantsReport() {
     async function loadData() {
       try {
         setLoading(true);
-        const [monthlyRes, totalsRes] = await Promise.all([
+        const [monthlyRes] = await Promise.all([
           fetch(
             `${API_BASE}/reports/merchant-monthly?year=${year}&limit=${limit}`
           ),
-          fetch(`${API_BASE}/reports/top-merchants?year=${year}&limit=100`),
         ]);
-        if (!monthlyRes.ok || !totalsRes.ok) {
+        if (!monthlyRes.ok) {
           throw new Error("Failed to load merchant report");
         }
         const monthlyData = await monthlyRes.json();
-        const totalsData = await totalsRes.json();
         setItems(monthlyData.items ?? []);
-        setTotals(totalsData.items ?? []);
         setError("");
       } catch (err) {
         setError(err.message);
@@ -114,13 +114,6 @@ export default function MerchantsReport() {
     loadData();
   }, [year, limit]);
 
-  const filteredTotals = useMemo(() => {
-    if (!filter) {
-      return totals;
-    }
-    const lowered = filter.toLowerCase();
-    return totals.filter((item) => item.name.toLowerCase().includes(lowered));
-  }, [filter, totals]);
 
   const chartData = useMemo(() => {
     const months = Array.from(new Set(items.map((item) => item.month))).sort();
@@ -136,6 +129,41 @@ export default function MerchantsReport() {
   }, [items]);
 
   const series = Array.from(new Set(items.map((item) => item.name)));
+
+  useEffect(() => {
+    setMerchants([]);
+    setListOffset(0);
+    setHasMore(true);
+  }, [year, filter]);
+
+  useEffect(() => {
+    if (!hasMore) {
+      return;
+    }
+    const controller = new AbortController();
+    async function loadList() {
+      try {
+        setListLoading(true);
+        const response = await fetch(
+          `${API_BASE}/merchants?q=${encodeURIComponent(filter)}&limit=50&offset=${listOffset}&year=${year}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) {
+          return;
+        }
+        const payload = await response.json();
+        const next = payload ?? [];
+        setMerchants((prev) => [...prev, ...next]);
+        setHasMore(next.length === 50);
+      } catch (err) {
+        // ignore aborted requests
+      } finally {
+        setListLoading(false);
+      }
+    }
+    loadList();
+    return () => controller.abort();
+  }, [year, filter, listOffset, hasMore]);
 
   return (
     <div className="report-page">
@@ -203,7 +231,7 @@ export default function MerchantsReport() {
       <section className="card report-card">
         <div className="card-header">
           <h3>All merchants</h3>
-          <p>Total spend in {year} (top 100)</p>
+          <p>Total spend in {year}</p>
         </div>
         <div className="search">
           <input
@@ -214,13 +242,24 @@ export default function MerchantsReport() {
           />
         </div>
         <ul className="list selectable">
-          {filteredTotals.map((item) => (
-            <li key={item.name} onClick={() => navigate(`/merchants/${item.id}`)}>
+          {merchants.map((item) => (
+            <li key={item.id} onClick={() => navigate(`/merchants/${item.id}`)}>
               <span>{item.name}</span>
               <strong>{formatMoney(item.total)}</strong>
             </li>
           ))}
         </ul>
+        <div className="load-more">
+          {hasMore && (
+            <button
+              className="ghost-button"
+              disabled={listLoading}
+              onClick={() => setListOffset((prev) => prev + 50)}
+            >
+              {listLoading ? "Loading..." : "Load more"}
+            </button>
+          )}
+        </div>
       </section>
 
       <div className="status-bar">

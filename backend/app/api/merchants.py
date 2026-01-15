@@ -47,6 +47,7 @@ def search_merchants(
     q: Optional[str] = Query(None),
     year: Optional[int] = Query(None, ge=2000, le=2100),
     limit: int = Query(20, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[MerchantSearchResult]:
     amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
@@ -69,7 +70,7 @@ def search_merchants(
     if q:
         query = query.filter(merchant_name.ilike(f"%{q}%"))
 
-    rows = query.limit(limit).all()
+    rows = query.limit(limit).offset(offset).all()
     return [MerchantSearchResult(id=row.id, name=row.name, total=row.total or 0) for row in rows]
 
 

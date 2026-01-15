@@ -379,6 +379,12 @@ h1 {
   box-shadow: 0 0 0 4px rgba(255, 138, 75, 0.2);
 }
 
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
 .pill {
   padding: 6px 12px;
   border-radius: 999px;

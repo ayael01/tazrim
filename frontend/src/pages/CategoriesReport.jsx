@@ -70,7 +70,11 @@ export default function CategoriesReport() {
   const [years, setYears] = useState([]);
   const [limit, setLimit] = useState(6);
   const [items, setItems] = useState([]);
-  const [totals, setTotals] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [filter, setFilter] = useState("");
+  const [listOffset, setListOffset] = useState(0);
+  const [listLoading, setListLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -94,19 +98,16 @@ export default function CategoriesReport() {
     async function loadData() {
       try {
         setLoading(true);
-        const [monthlyRes, totalsRes] = await Promise.all([
+        const [monthlyRes] = await Promise.all([
           fetch(
             `${API_BASE}/reports/category-monthly?year=${year}&limit=${limit}`
           ),
-          fetch(`${API_BASE}/reports/top-categories?year=${year}&limit=100`),
         ]);
-        if (!monthlyRes.ok || !totalsRes.ok) {
+        if (!monthlyRes.ok) {
           throw new Error("Failed to load category report");
         }
         const monthlyData = await monthlyRes.json();
-        const totalsData = await totalsRes.json();
         setItems(monthlyData.items ?? []);
-        setTotals(totalsData.items ?? []);
         setError("");
       } catch (err) {
         setError(err.message);
@@ -116,6 +117,41 @@ export default function CategoriesReport() {
     }
     loadData();
   }, [year, limit]);
+
+  useEffect(() => {
+    setCategories([]);
+    setListOffset(0);
+    setHasMore(true);
+  }, [year, filter]);
+
+  useEffect(() => {
+    if (!hasMore) {
+      return;
+    }
+    const controller = new AbortController();
+    async function loadList() {
+      try {
+        setListLoading(true);
+        const response = await fetch(
+          `${API_BASE}/categories?year=${year}&q=${encodeURIComponent(filter)}&limit=50&offset=${listOffset}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) {
+          return;
+        }
+        const payload = await response.json();
+        const next = payload ?? [];
+        setCategories((prev) => [...prev, ...next]);
+        setHasMore(next.length === 50);
+      } catch (err) {
+        // ignore aborted requests
+      } finally {
+        setListLoading(false);
+      }
+    }
+    loadList();
+    return () => controller.abort();
+  }, [year, filter, listOffset, hasMore]);
 
   const chartData = useMemo(() => {
     const months = Array.from(new Set(items.map((item) => item.month))).sort();
@@ -206,10 +242,18 @@ export default function CategoriesReport() {
       <section className="card report-card">
         <div className="card-header">
           <h3>All categories</h3>
-          <p>Total spend in {year} (top 100)</p>
+          <p>Total spend in {year}</p>
+        </div>
+        <div className="search">
+          <input
+            type="text"
+            placeholder="Filter categories by name"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          />
         </div>
         <ul className="list selectable">
-          {totals.map((item) => (
+          {categories.map((item) => (
             <li
               key={item.name}
               onClick={() =>
@@ -223,6 +267,17 @@ export default function CategoriesReport() {
             </li>
           ))}
         </ul>
+        <div className="load-more">
+          {hasMore && (
+            <button
+              className="ghost-button"
+              disabled={listLoading}
+              onClick={() => setListOffset((prev) => prev + 50)}
+            >
+              {listLoading ? "Loading..." : "Load more"}
+            </button>
+          )}
+        </div>
       </section>
 
       <div className="status-bar">
