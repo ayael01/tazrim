@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.models import Category, Merchant, MerchantCategoryMap, Transaction
 from app.db.session import get_db
-from app.schemas.merchants import UnknownMerchant
+from app.schemas.merchants import MerchantSearchResult, UnknownMerchant
 
 router = APIRouter()
 
@@ -38,6 +40,37 @@ def list_unknown_merchants(
         )
         for row in query.all()
     ]
+
+
+@router.get("", response_model=list[MerchantSearchResult])
+def search_merchants(
+    q: Optional[str] = Query(None),
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    limit: int = Query(20, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> list[MerchantSearchResult]:
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
+
+    query = (
+        db.query(
+            Merchant.id.label("id"),
+            merchant_name.label("name"),
+            func.sum(amount_expr).label("total"),
+        )
+        .outerjoin(Transaction, Merchant.id == Transaction.merchant_id)
+        .group_by(Merchant.id, merchant_name)
+        .order_by(func.sum(amount_expr).desc())
+    )
+
+    if year:
+        query = query.filter(func.extract("year", Transaction.transaction_date) == year)
+
+    if q:
+        query = query.filter(merchant_name.ilike(f"%{q}%"))
+
+    rows = query.limit(limit).all()
+    return [MerchantSearchResult(id=row.id, name=row.name, total=row.total or 0) for row in rows]
 
 
 @router.post("/{merchant_id}/category")

@@ -18,6 +18,7 @@ class CategoryTotal(BaseModel):
 
 
 class MerchantTotal(BaseModel):
+    id: int
     name: str
     total: Decimal
 
@@ -44,3 +45,42 @@ class MonthlyTrendResponse(BaseModel):
 
 class YearsResponse(BaseModel):
     years: List[int]
+
+
+class MonthlyBreakdownItem(BaseModel):
+    month: str
+    name: str
+    total: Decimal
+
+
+class MonthlyBreakdownResponse(BaseModel):
+    year: int
+    items: List[MonthlyBreakdownItem]
+
+
+class MerchantSpend(BaseModel):
+    name: str
+    total: Decimal
+
+
+class CategoryMonthDetail(BaseModel):
+    name: str
+    total: Decimal
+    merchants: List[MerchantSpend]
+
+
+class CategoryMonthDetailResponse(BaseModel):
+    month: str
+    categories: List[CategoryMonthDetail]
+
+
+class MerchantMonthTotal(BaseModel):
+    month: str
+    total: Decimal
+
+
+class MerchantDetailResponse(BaseModel):
+    merchant_id: int
+    merchant_name: str
+    year: int
+    items: List[MerchantMonthTotal]
