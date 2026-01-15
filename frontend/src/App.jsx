@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import CategoriesReport from "./pages/CategoriesReport.jsx";
 import MerchantsReport from "./pages/MerchantsReport.jsx";
 import CategoryMonthDetail from "./pages/CategoryMonthDetail.jsx";
+import CategoryDetail from "./pages/CategoryDetail.jsx";
 import MerchantDetail from "./pages/MerchantDetail.jsx";
 
 export default function App() {
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/categories" element={<CategoriesReport />} />
           <Route path="/categories/month/:month" element={<CategoryMonthDetail />} />
+          <Route path="/categories/:categoryId" element={<CategoryDetail />} />
           <Route path="/merchants" element={<MerchantsReport />} />
           <Route path="/merchants/:merchantId" element={<MerchantDetail />} />
         </Routes>

@@ -208,9 +208,16 @@ export default function CategoriesReport() {
           <h3>All categories</h3>
           <p>Total spend in {year} (top 100)</p>
         </div>
-        <ul className="list">
+        <ul className="list selectable">
           {totals.map((item) => (
-            <li key={item.name}>
+            <li
+              key={item.name}
+              onClick={() =>
+                navigate(
+                  item.id ? `/categories/${item.id}` : "/categories/uncategorized"
+                )
+              }
+            >
               <span>{item.name}</span>
               <strong>{formatMoney(item.total)}</strong>
             </li>

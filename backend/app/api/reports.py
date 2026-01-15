@@ -11,6 +11,8 @@ from app.schemas.reports import (
     CategoryTotal,
     CategoryMonthDetail,
     CategoryMonthDetailResponse,
+    CategoryDetailResponse,
+    CategoryMonthMerchantsResponse,
     MerchantTotal,
     MerchantSpend,
     MerchantDetailResponse,
@@ -89,13 +91,17 @@ def top_categories(
     category_name = func.coalesce(Category.name, "Uncategorized")
 
     rows = (
-        db.query(category_name.label("name"), func.sum(amount_expr).label("total"))
+        db.query(
+            Category.id.label("id"),
+            category_name.label("name"),
+            func.sum(amount_expr).label("total"),
+        )
         .select_from(Transaction)
         .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
         .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
         .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
         .filter(extract("year", Transaction.transaction_date) == selected_year)
-        .group_by(category_name)
+        .group_by(Category.id, category_name)
         .order_by(func.sum(amount_expr).desc())
         .limit(limit)
         .all()
@@ -103,7 +109,9 @@ def top_categories(
 
     return TopCategoriesResponse(
         year=selected_year,
-        items=[CategoryTotal(name=row.name, total=row.total) for row in rows],
+        items=[
+            CategoryTotal(id=row.id, name=row.name, total=row.total) for row in rows
+        ],
     )
 
 
@@ -318,6 +326,109 @@ def merchant_detail(
         merchant_name=merchant.display_name,
         year=year,
         items=[MerchantMonthTotal(month=row.month, total=row.total) for row in rows],
+    )
+
+
+@router.get("/category-detail", response_model=CategoryDetailResponse)
+def category_detail(
+    year: int = Query(..., ge=2000, le=2100),
+    category_id: Optional[int] = Query(None, ge=1),
+    uncategorized: bool = Query(False),
+    db: Session = Depends(get_db),
+) -> CategoryDetailResponse:
+    if not category_id and not uncategorized:
+        raise HTTPException(status_code=400, detail="category_id or uncategorized required")
+
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    month_bucket = func.date_trunc("month", Transaction.transaction_date)
+    month_label = func.to_char(month_bucket, "YYYY-MM")
+
+    query = (
+        db.query(month_label.label("month"), func.sum(amount_expr).label("total"))
+        .select_from(Transaction)
+        .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
+        .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
+        .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
+        .filter(extract("year", Transaction.transaction_date) == year)
+    )
+
+    if uncategorized:
+        query = query.filter(MerchantCategoryMap.id.is_(None))
+        category_name = "Uncategorized"
+        resolved_id = None
+    else:
+        category = db.query(Category).filter(Category.id == category_id).one_or_none()
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+        query = query.filter(MerchantCategoryMap.category_id == category_id)
+        category_name = category.name
+        resolved_id = category.id
+
+    rows = (
+        query.group_by(month_bucket, month_label)
+        .order_by(month_bucket)
+        .all()
+    )
+
+    return CategoryDetailResponse(
+        category_id=resolved_id,
+        category_name=category_name,
+        year=year,
+        items=[MonthlyTotal(month=row.month, total=row.total) for row in rows],
+    )
+
+
+@router.get("/category-month-merchants", response_model=CategoryMonthMerchantsResponse)
+def category_month_merchants(
+    year: int = Query(..., ge=2000, le=2100),
+    month: int = Query(..., ge=1, le=12),
+    category_id: Optional[int] = Query(None, ge=1),
+    uncategorized: bool = Query(False),
+    db: Session = Depends(get_db),
+) -> CategoryMonthMerchantsResponse:
+    if not category_id and not uncategorized:
+        raise HTTPException(status_code=400, detail="category_id or uncategorized required")
+
+    month_start = datetime(year, month, 1)
+    month_end = datetime(year + (month == 12), 1 if month == 12 else month + 1, 1)
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
+
+    query = (
+        db.query(merchant_name.label("merchant"), func.sum(amount_expr).label("total"))
+        .select_from(Transaction)
+        .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
+        .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
+        .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
+        .filter(Transaction.transaction_date >= month_start)
+        .filter(Transaction.transaction_date < month_end)
+    )
+
+    if uncategorized:
+        query = query.filter(MerchantCategoryMap.id.is_(None))
+        category_name = "Uncategorized"
+        resolved_id = None
+    else:
+        category = db.query(Category).filter(Category.id == category_id).one_or_none()
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+        query = query.filter(MerchantCategoryMap.category_id == category_id)
+        category_name = category.name
+        resolved_id = category.id
+
+    rows = (
+        query.group_by(merchant_name)
+        .order_by(func.sum(amount_expr).desc())
+        .all()
+    )
+
+    month_label = f"{year:04d}-{month:02d}"
+
+    return CategoryMonthMerchantsResponse(
+        month=month_label,
+        category_id=resolved_id,
+        category_name=category_name,
+        merchants=[MerchantSpend(name=row.merchant, total=row.total) for row in rows],
     )
 @router.get("/years", response_model=YearsResponse)
 def available_years(db: Session = Depends(get_db)) -> YearsResponse:

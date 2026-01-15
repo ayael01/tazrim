@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -13,6 +13,7 @@ class SummaryResponse(BaseModel):
 
 
 class CategoryTotal(BaseModel):
+    id: Optional[int]
     name: str
     total: Decimal
 
@@ -84,3 +85,17 @@ class MerchantDetailResponse(BaseModel):
     merchant_name: str
     year: int
     items: List[MerchantMonthTotal]
+
+
+class CategoryDetailResponse(BaseModel):
+    category_id: Optional[int]
+    category_name: str
+    year: int
+    items: List[MonthlyTotal]
+
+
+class CategoryMonthMerchantsResponse(BaseModel):
+    month: str
+    category_id: Optional[int]
+    category_name: str
+    merchants: List[MerchantSpend]
