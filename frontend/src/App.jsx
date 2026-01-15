@@ -158,7 +158,40 @@ export default function App() {
 
       <header className="hero">
         <div>
-          <p className="eyebrow">Tazrim</p>
+          <div className="brand">
+            <div className="logo" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="img">
+                <defs>
+                  <linearGradient id="logoGradient" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#ff8a4b" />
+                    <stop offset="100%" stopColor="#7b61ff" />
+                  </linearGradient>
+                </defs>
+                <circle cx="32" cy="32" r="26" fill="url(#logoGradient)" />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="18"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.45)"
+                  strokeWidth="2"
+                />
+                <text
+                  x="32"
+                  y="32"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  dy="2"
+                  fontFamily="Space Grotesk, sans-serif"
+                  fontSize="26"
+                  fill="#fff"
+                >
+                  ₪
+                </text>
+              </svg>
+            </div>
+            <p className="eyebrow">Tazrim</p>
+          </div>
           <h1>Welcome back.</h1>
           <p className="subtitle">
             Track family spending, upload new card statements, and explore

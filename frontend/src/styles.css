@@ -103,6 +103,32 @@ body {
   margin-bottom: 12px;
 }
 
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 25px rgba(255, 138, 75, 0.25);
+  display: grid;
+  place-items: center;
+}
+
+.logo svg {
+  width: 26px;
+  height: 26px;
+}
+
+.brand .eyebrow {
+  margin-bottom: 0;
+}
+
 h1 {
   font-family: "Fraunces", serif;
   font-size: clamp(2.2rem, 3.6vw, 3.4rem);
