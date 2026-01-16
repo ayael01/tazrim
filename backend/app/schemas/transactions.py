@@ -20,3 +20,13 @@ class TransactionOut(BaseModel):
 class TransactionList(BaseModel):
     total: int
     items: list[TransactionOut]
+
+
+class TransactionMonthList(BaseModel):
+    month: str
+    items: list[TransactionOut]
+
+
+class TransactionList(BaseModel):
+    total: int
+    items: list[TransactionOut]

@@ -34,8 +34,11 @@ export default function MerchantDetail() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [years, setYears] = useState([]);
   const [data, setData] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [monthTransactions, setMonthTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [popupError, setPopupError] = useState("");
 
   useEffect(() => {
     async function loadYears() {
@@ -78,6 +81,30 @@ export default function MerchantDetail() {
 
     loadDetail();
   }, [merchantId, year]);
+
+  useEffect(() => {
+    async function loadMonthTransactions() {
+      if (!selectedMonth || !merchantId) {
+        return;
+      }
+      try {
+        const [selectedYear, selectedMonthValue] = selectedMonth.split("-");
+        const response = await fetch(
+          `${API_BASE}/transactions/merchant-month?merchant_id=${merchantId}&year=${selectedYear}&month=${selectedMonthValue}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to load transactions");
+        }
+        const payload = await response.json();
+        setMonthTransactions(payload.items ?? []);
+        setPopupError("");
+      } catch (err) {
+        setPopupError(err.message);
+      }
+    }
+
+    loadMonthTransactions();
+  }, [selectedMonth, merchantId]);
 
   const chartData = useMemo(() => {
     if (!data?.items) {
@@ -124,7 +151,15 @@ export default function MerchantDetail() {
         </div>
         <div className="chart">
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={chartData}>
+            <LineChart
+              data={chartData}
+              onClick={(payload) => {
+                const monthValue = payload?.activePayload?.[0]?.payload?.month;
+                if (monthValue) {
+                  setSelectedMonth(monthValue);
+                }
+              }}
+            >
               <XAxis dataKey="label" />
               <YAxis hide />
               <Tooltip formatter={(value) => formatMoney(value)} />
@@ -139,6 +174,34 @@ export default function MerchantDetail() {
           </ResponsiveContainer>
         </div>
       </section>
+
+      {selectedMonth && (
+        <div className="modal-overlay" onClick={() => setSelectedMonth(null)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="card-header">
+              <h3>Transactions in {selectedMonth}</h3>
+              <button
+                className="ghost-button"
+                onClick={() => setSelectedMonth(null)}
+              >
+                Close
+              </button>
+            </div>
+            {popupError && <span className="pill error">{popupError}</span>}
+            <div className="detail-list">
+              {monthTransactions.map((tx) => (
+                <div className="detail-row" key={tx.id}>
+                  <span>
+                    {new Date(tx.transaction_date).toLocaleDateString("en-GB")} ·{" "}
+                    {tx.merchant_raw}
+                  </span>
+                  <strong>{formatMoney(tx.amount)}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="status-bar">
         {loading && <span className="pill">Loading merchant detail</span>}
