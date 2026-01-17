@@ -10,8 +10,11 @@ import {
   YAxis,
 } from "recharts";
 
+import { useNavigate } from "react-router-dom";
+
 import UploadCard from "../components/UploadCard.jsx";
 import UnknownMerchantsCard from "../components/UnknownMerchantsCard.jsx";
+import ImportHistoryCard from "../components/ImportHistoryCard.jsx";
 
 const API_BASE = "http://localhost:8000";
 
@@ -47,6 +50,7 @@ const now = new Date();
 const defaultYear = now.getFullYear();
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [year, setYear] = useState(defaultYear);
   const [years, setYears] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -56,6 +60,7 @@ export default function Dashboard() {
   const [latestTransactions, setLatestTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [unknownMerchants, setUnknownMerchants] = useState([]);
+  const [importBatches, setImportBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -70,6 +75,7 @@ export default function Dashboard() {
         txRes,
         categoriesRes,
         unknownRes,
+        importsRes,
       ] = await Promise.all([
         fetch(`${API_BASE}/reports/summary?year=${year}`),
         fetch(`${API_BASE}/reports/monthly-trend?year=${year}`),
@@ -78,6 +84,7 @@ export default function Dashboard() {
         fetch(`${API_BASE}/transactions?limit=10`),
         fetch(`${API_BASE}/categories`),
         fetch(`${API_BASE}/merchants/unknown?limit=6`),
+        fetch(`${API_BASE}/imports?limit=5`),
       ]);
 
       if (
@@ -87,7 +94,8 @@ export default function Dashboard() {
         !merRes.ok ||
         !txRes.ok ||
         !categoriesRes.ok ||
-        !unknownRes.ok
+        !unknownRes.ok ||
+        !importsRes.ok
       ) {
         throw new Error("Failed to load dashboard data");
       }
@@ -99,6 +107,7 @@ export default function Dashboard() {
       const txData = await txRes.json();
       const categoriesData = await categoriesRes.json();
       const unknownData = await unknownRes.json();
+      const importsData = await importsRes.json();
 
       setSummary(summaryData);
       setTrend(trendData.items ?? []);
@@ -107,6 +116,7 @@ export default function Dashboard() {
       setLatestTransactions(txData.items ?? []);
       setCategories(categoriesData ?? []);
       setUnknownMerchants(unknownData ?? []);
+      setImportBatches(importsData ?? []);
       setError("");
     } catch (err) {
       setError(err.message);
@@ -198,6 +208,11 @@ export default function Dashboard() {
 
       <section className="dashboard-grid">
         <UploadCard onUploaded={loadDashboard} />
+        <ImportHistoryCard
+          batches={importBatches}
+          onRollback={loadDashboard}
+          onView={(id) => navigate(`/imports/${id}`)}
+        />
 
         <div className="card chart-card">
           <div className="card-header">
@@ -276,6 +291,7 @@ export default function Dashboard() {
           merchants={unknownMerchants}
           categories={categories}
           onAssigned={loadDashboard}
+          totalCount={summary?.uncategorized_merchants}
         />
 
         <div className="card table-card">

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
@@ -15,10 +16,10 @@ router = APIRouter()
 def list_transactions(
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
+    import_batch_id: Optional[int] = Query(None, ge=1),
     db: Session = Depends(get_db),
 ) -> TransactionList:
-    total = db.query(func.count(Transaction.id)).scalar() or 0
-
+    total_query = db.query(func.count(Transaction.id))
     query = (
         db.query(
             Transaction,
@@ -28,9 +29,15 @@ def list_transactions(
         .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
         .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
         .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
-        .limit(limit)
-        .offset(offset)
     )
+
+    if import_batch_id:
+        total_query = total_query.filter(Transaction.import_batch_id == import_batch_id)
+        query = query.filter(Transaction.import_batch_id == import_batch_id)
+
+    total = total_query.scalar() or 0
+
+    query = query.limit(limit).offset(offset)
 
     items = []
     for transaction, category_name in query.all():

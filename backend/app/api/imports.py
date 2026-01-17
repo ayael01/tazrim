@@ -1,11 +1,12 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.models import CardAccount, ImportBatch, Merchant, MerchantCategoryMap, Transaction
 from app.db.session import get_db
-from app.schemas.imports import ImportSummary
+from app.schemas.imports import ImportBatchOut, ImportSummary
 from app.services.importer import parse_transactions_csv
 
 router = APIRouter()
@@ -104,3 +105,50 @@ def import_transactions(
         new_merchants=new_merchants,
         unknown_merchants=unknown_merchants,
     )
+
+
+@router.get("", response_model=list[ImportBatchOut])
+def list_imports(
+    limit: int = Query(20, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> list[ImportBatchOut]:
+    rows = (
+        db.query(
+            ImportBatch.id,
+            ImportBatch.source_filename,
+            ImportBatch.period_month,
+            ImportBatch.uploaded_at,
+            func.count(Transaction.id).label("row_count"),
+        )
+        .outerjoin(Transaction, Transaction.import_batch_id == ImportBatch.id)
+        .group_by(ImportBatch.id)
+        .order_by(ImportBatch.uploaded_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        ImportBatchOut(
+            id=row.id,
+            source_filename=row.source_filename,
+            period_month=row.period_month.isoformat(),
+            uploaded_at=row.uploaded_at.isoformat(),
+            row_count=row.row_count,
+        )
+        for row in rows
+    ]
+
+
+@router.delete("/{import_id}")
+def delete_import(
+    import_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    batch = db.query(ImportBatch).filter(ImportBatch.id == import_id).one_or_none()
+    if not batch:
+        raise HTTPException(status_code=404, detail="Import batch not found")
+
+    db.query(Transaction).filter(Transaction.import_batch_id == import_id).delete()
+    db.delete(batch)
+    db.commit()
+    return {"status": "ok"}

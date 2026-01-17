@@ -6,6 +6,7 @@ import MerchantsReport from "./pages/MerchantsReport.jsx";
 import CategoryMonthDetail from "./pages/CategoryMonthDetail.jsx";
 import CategoryDetail from "./pages/CategoryDetail.jsx";
 import MerchantDetail from "./pages/MerchantDetail.jsx";
+import ImportDetail from "./pages/ImportDetail.jsx";
 
 export default function App() {
   return (
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/categories/:categoryId" element={<CategoryDetail />} />
           <Route path="/merchants" element={<MerchantsReport />} />
           <Route path="/merchants/:merchantId" element={<MerchantDetail />} />
+          <Route path="/imports/:importId" element={<ImportDetail />} />
         </Routes>
       </main>
     </div>

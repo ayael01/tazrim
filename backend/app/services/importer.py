@@ -33,6 +33,15 @@ def parse_date(value: str) -> date:
     raise ValueError(f"Unsupported date format: {value}")
 
 
+def try_parse_date(value: str) -> Optional[date]:
+    if not value:
+        return None
+    try:
+        return parse_date(value)
+    except ValueError:
+        return None
+
+
 def parse_money(value: str) -> tuple[Decimal, str]:
     raw = value.strip()
     if not raw:
@@ -87,50 +96,79 @@ def _log_skip(
     )
 
 
-def parse_transactions_csv(
-    upload: UploadFile,
-    skip_log: Optional[List[Dict]] = None,
-) -> list[dict]:
-    stream = io.TextIOWrapper(upload.file, encoding="utf-8-sig", newline="")
-    reader = csv.DictReader(stream)
+def _normalize_header(value: str) -> str:
+    return re.sub(r"\s+", " ", value.replace("\ufeff", "").strip())
 
-    expected_headers = {
+
+def _build_header_map(fieldnames: list[str]) -> dict:
+    normalized = {_normalize_header(name): name for name in fieldnames}
+
+    old_headers = {
         "תאריך חיוב": "posting_date",
         "תאריך העסקה": "transaction_date",
         "בית העסק": "merchant_raw",
         "סכום העסקה": "transaction_amount",
         "סכום החיוב": "charged_amount",
     }
+    new_headers = {
+        "תאריך עסקה": "transaction_date",
+        "שם בית עסק": "merchant_raw",
+        "סכום עסקה": "transaction_amount",
+        "סכום חיוב": "charged_amount",
+    }
 
-    missing_headers = [
-        header for header in expected_headers.keys() if header not in reader.fieldnames
-    ]
-    if missing_headers:
-        raise ValueError(f"Missing headers: {', '.join(missing_headers)}")
+    mapping = {}
+    for label, key in {**old_headers, **new_headers}.items():
+        if label in normalized:
+            mapping[key] = normalized[label]
+
+    return mapping
+
+
+def parse_transactions_csv(
+    upload: UploadFile,
+    skip_log: Optional[List[Dict]] = None,
+) -> list[dict]:
+    raw_content = upload.file.read()
+    if isinstance(raw_content, bytes):
+        text = raw_content.decode("utf-8-sig")
+    else:
+        text = str(raw_content)
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise ValueError("Missing headers")
+
+    header_map = _build_header_map(reader.fieldnames)
+    required_fields = {"transaction_date", "merchant_raw", "transaction_amount"}
+    if not required_fields.issubset(header_map.keys()):
+        raise ValueError("Missing required columns")
 
     rows = []
     for row_index, row in enumerate(reader, start=2):
         try:
-            raw_transaction_date = row["תאריך העסקה"].strip()
-            raw_posting_date = row["תאריך חיוב"].strip()
-            merchant_raw = row["בית העסק"].strip()
-            amount_raw = row["סכום העסקה"].strip()
+            raw_transaction_date = row.get(header_map["transaction_date"], "").strip()
+            posting_key = header_map.get("posting_date")
+            raw_posting_date = row.get(posting_key, "").strip() if posting_key else ""
+            merchant_raw = row.get(header_map["merchant_raw"], "").strip()
+            amount_raw = row.get(header_map["transaction_amount"], "").strip()
 
             if not any([raw_transaction_date, raw_posting_date, merchant_raw, amount_raw]):
                 _log_skip(skip_log, row_index, "empty row", row)
                 continue
 
-            if raw_transaction_date:
-                transaction_date = parse_date(raw_transaction_date)
-            elif raw_posting_date:
-                transaction_date = parse_date(raw_posting_date)
-            else:
-                raise ValueError("Missing transaction date")
+            transaction_date = try_parse_date(raw_transaction_date)
+            posting_date = try_parse_date(raw_posting_date)
 
-            if raw_posting_date:
-                posting_date = parse_date(raw_posting_date)
-            else:
+            if not transaction_date and posting_date:
+                transaction_date = posting_date
+            if not posting_date and transaction_date:
                 posting_date = transaction_date
+
+            if not transaction_date and not posting_date:
+                if not merchant_raw and not amount_raw:
+                    _log_skip(skip_log, row_index, "non-data row", row)
+                    continue
+                raise ValueError("Missing transaction date")
 
             if not merchant_raw:
                 merchant_raw = "UNKNOWN"
@@ -139,10 +177,13 @@ def parse_transactions_csv(
                 _log_skip(skip_log, row_index, "empty amount", row)
                 continue
 
-            transaction_amount, transaction_currency = parse_money(row["סכום העסקה"])
+            transaction_amount, transaction_currency = parse_money(
+                row.get(header_map["transaction_amount"], "")
+            )
             charged_amount = None
             charged_currency = None
-            charged_value = row.get("סכום החיוב", "").strip()
+            charged_key = header_map.get("charged_amount")
+            charged_value = row.get(charged_key, "").strip() if charged_key else ""
             if charged_value:
                 charged_amount, charged_currency = parse_money(charged_value)
 

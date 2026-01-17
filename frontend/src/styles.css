@@ -279,6 +279,13 @@ h1 {
   cursor: pointer;
 }
 
+.upload-card .ghost-button {
+  background: transparent;
+  border: 1px solid var(--stroke);
+  color: var(--ink);
+  margin-top: 12px;
+}
+
 .upload-card .status {
   font-size: 12px;
   color: var(--muted);
@@ -296,6 +303,21 @@ h1 {
   grid-column: span 4;
   display: grid;
   gap: 12px;
+}
+
+.header-with-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.count-badge {
+  background: rgba(255, 138, 75, 0.2);
+  color: var(--accent-deep);
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
 }
 
 .unknown-list {
@@ -323,6 +345,21 @@ h1 {
   color: var(--muted);
 }
 
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--accent-deep);
+}
+
 .unknown-row select {
   padding: 8px 10px;
   border-radius: 10px;
@@ -333,6 +370,43 @@ h1 {
 .empty-state {
   font-size: 14px;
   color: var(--muted);
+}
+
+.import-history {
+  grid-column: span 4;
+  display: grid;
+  gap: 12px;
+}
+
+.history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-muted);
+}
+
+.history-row span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.history-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ghost-button.danger {
+  border-color: rgba(255, 92, 71, 0.4);
+  color: #ff5c47;
 }
 
 .chart {
@@ -556,6 +630,27 @@ h1 {
   border: 1px solid var(--stroke);
   max-height: 70vh;
   overflow: auto;
+}
+
+.format-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.format-grid span {
+  background: var(--surface-muted);
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.format-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
 }
 
 .tooltip {
