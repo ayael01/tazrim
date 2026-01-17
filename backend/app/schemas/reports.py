@@ -99,3 +99,8 @@ class CategoryMonthMerchantsResponse(BaseModel):
     category_id: Optional[int]
     category_name: str
     merchants: List[MerchantSpend]
+
+
+class MerchantMonthListResponse(BaseModel):
+    month: str
+    items: List[MerchantTotal]

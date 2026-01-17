@@ -676,6 +676,22 @@ h1 {
   font-weight: 600;
 }
 
+.tooltip-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid var(--stroke);
+  margin-bottom: 6px;
+}
+
+.tooltip-note {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
 @keyframes float {
   0%,
   100% {

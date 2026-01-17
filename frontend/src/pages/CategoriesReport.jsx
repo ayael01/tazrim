@@ -45,9 +45,14 @@ function SortedTooltip({ active, payload, label }) {
   const sorted = [...payload].sort(
     (a, b) => Number(b.value || 0) - Number(a.value || 0)
   );
+  const total = sorted.reduce((sum, entry) => sum + Number(entry.value || 0), 0);
   return (
     <div className="tooltip">
       <strong>{label}</strong>
+      <div className="tooltip-total">
+        <span>Total</span>
+        <span>{formatMoney(total)}</span>
+      </div>
       <div className="tooltip-list">
         {sorted.map((entry) => (
           <div

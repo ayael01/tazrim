@@ -21,6 +21,7 @@ from app.schemas.reports import (
     MonthlyTrendResponse,
     MonthlyBreakdownItem,
     MonthlyBreakdownResponse,
+    MerchantMonthListResponse,
     SummaryResponse,
     TopCategoriesResponse,
     TopMerchantsResponse,
@@ -326,6 +327,45 @@ def merchant_detail(
         merchant_name=merchant.display_name,
         year=year,
         items=[MerchantMonthTotal(month=row.month, total=row.total) for row in rows],
+    )
+
+
+@router.get("/merchant-month-list", response_model=MerchantMonthListResponse)
+def merchant_month_list(
+    year: int = Query(..., ge=2000, le=2100),
+    month: int = Query(..., ge=1, le=12),
+    q: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=5000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+) -> MerchantMonthListResponse:
+    month_start = datetime(year, month, 1)
+    month_end = datetime(year + (month == 12), 1 if month == 12 else month + 1, 1)
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
+
+    query = (
+        db.query(
+            Merchant.id.label("id"),
+            merchant_name.label("name"),
+            func.sum(amount_expr).label("total"),
+        )
+        .select_from(Transaction)
+        .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
+        .filter(Transaction.transaction_date >= month_start)
+        .filter(Transaction.transaction_date < month_end)
+        .group_by(Merchant.id, merchant_name)
+        .order_by(func.sum(amount_expr).desc())
+    )
+
+    if q:
+        query = query.filter(merchant_name.ilike(f"%{q}%"))
+
+    rows = query.limit(limit).offset(offset).all()
+    month_label = f"{year:04d}-{month:02d}"
+    return MerchantMonthListResponse(
+        month=month_label,
+        items=[MerchantTotal(id=row.id, name=row.name, total=row.total) for row in rows],
     )
 
 
