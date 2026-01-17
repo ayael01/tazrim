@@ -110,7 +110,9 @@ export default function UploadCard({ onUploaded }) {
               <span>הערות</span>
             </div>
             <div className="format-note">
-              Required: תאריך עסקה, שם בית עסק, סכום עסקה, סכום חיוב
+              Required: תאריך עסקה, שם בית עסק, סכום עסקה, סכום חיוב. If the
+              export doesn't include a billed date, the period month will be
+              used (first day of the month).
             </div>
             <a className="ghost-button" href="/csv-template.csv" download>
               Download CSV template

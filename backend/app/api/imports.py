@@ -25,7 +25,8 @@ def import_transactions(
         raise HTTPException(status_code=400, detail="period_month must be YYYY-MM") from exc
 
     try:
-        rows = parse_transactions_csv(file)
+        default_posting_date = month
+        rows = parse_transactions_csv(file, default_posting_date=default_posting_date)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -192,10 +192,15 @@ export default function MerchantDetail() {
               {monthTransactions.map((tx) => (
                 <div className="detail-row" key={tx.id}>
                   <span>
-                    {new Date(tx.transaction_date).toLocaleDateString("en-GB")} ·{" "}
-                    {tx.merchant_raw}
+                    {new Date(tx.transaction_date).toLocaleDateString("en-GB")}
+                    {tx.posting_date
+                      ? ` · billed ${new Date(tx.posting_date).toLocaleDateString("en-GB")}`
+                      : ""}{" "}
+                    · {tx.merchant_raw}
                   </span>
-                  <strong>{formatMoney(tx.amount)}</strong>
+                  <strong>
+                    {formatMoney(tx.charged_amount ?? tx.amount)}
+                  </strong>
                 </div>
               ))}
             </div>

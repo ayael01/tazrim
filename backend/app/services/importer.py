@@ -14,7 +14,7 @@ CURRENCY_MAP = {
     "€": "EUR",
 }
 
-DATE_FORMATS = ("%d/%m/%Y", "%d/%m/%y", "%m/%d/%Y")
+DATE_FORMATS = ("%d/%m/%Y", "%d/%m/%y", "%m/%d/%Y", "%m/%d/%y")
 
 
 def normalize_merchant(name: str) -> str:
@@ -23,9 +23,9 @@ def normalize_merchant(name: str) -> str:
     return cleaned.casefold()
 
 
-def parse_date(value: str) -> date:
+def parse_date(value: str, formats: tuple[str, ...] = DATE_FORMATS) -> date:
     value = value.strip()
-    for fmt in DATE_FORMATS:
+    for fmt in formats:
         try:
             return datetime.strptime(value, fmt).date()
         except ValueError:
@@ -33,13 +33,44 @@ def parse_date(value: str) -> date:
     raise ValueError(f"Unsupported date format: {value}")
 
 
-def try_parse_date(value: str) -> Optional[date]:
+def try_parse_date(value: str, formats: tuple[str, ...] = DATE_FORMATS) -> Optional[date]:
     if not value:
         return None
     try:
-        return parse_date(value)
+        return parse_date(value, formats=formats)
     except ValueError:
         return None
+
+
+def detect_date_order(values: list[str]) -> str:
+    first_gt12 = 0
+    second_gt12 = 0
+    for value in values:
+        if not value:
+            continue
+        parts = value.strip().split("/")
+        if len(parts) < 3:
+            continue
+        try:
+            first = int(parts[0])
+            second = int(parts[1])
+        except ValueError:
+            continue
+        if first > 12:
+            first_gt12 += 1
+        if second > 12:
+            second_gt12 += 1
+    if first_gt12:
+        return "dmy"
+    if second_gt12:
+        return "mdy"
+    return "dmy"
+
+
+def formats_for_order(order: str) -> tuple[str, ...]:
+    if order == "mdy":
+        return ("%m/%d/%Y", "%m/%d/%y")
+    return ("%d/%m/%Y", "%d/%m/%y")
 
 
 def parse_money(value: str) -> tuple[Decimal, str]:
@@ -128,6 +159,7 @@ def _build_header_map(fieldnames: list[str]) -> dict:
 def parse_transactions_csv(
     upload: UploadFile,
     skip_log: Optional[List[Dict]] = None,
+    default_posting_date: Optional[date] = None,
 ) -> list[dict]:
     raw_content = upload.file.read()
     if isinstance(raw_content, bytes):
@@ -139,12 +171,19 @@ def parse_transactions_csv(
         raise ValueError("Missing headers")
 
     header_map = _build_header_map(reader.fieldnames)
+    rows = list(reader)
     required_fields = {"transaction_date", "merchant_raw", "transaction_amount"}
     if not required_fields.issubset(header_map.keys()):
         raise ValueError("Missing required columns")
 
-    rows = []
-    for row_index, row in enumerate(reader, start=2):
+    tx_values = [row.get(header_map["transaction_date"], "").strip() for row in rows]
+    posting_key = header_map.get("posting_date")
+    posting_values = [row.get(posting_key, "").strip() for row in rows] if posting_key else []
+    tx_formats = formats_for_order(detect_date_order(tx_values))
+    posting_formats = formats_for_order(detect_date_order(posting_values)) if posting_key else tx_formats
+
+    parsed_rows = []
+    for row_index, row in enumerate(rows, start=2):
         try:
             raw_transaction_date = row.get(header_map["transaction_date"], "").strip()
             posting_key = header_map.get("posting_date")
@@ -156,13 +195,13 @@ def parse_transactions_csv(
                 _log_skip(skip_log, row_index, "empty row", row)
                 continue
 
-            transaction_date = try_parse_date(raw_transaction_date)
-            posting_date = try_parse_date(raw_posting_date)
+            transaction_date = try_parse_date(raw_transaction_date, formats=tx_formats)
+            posting_date = try_parse_date(raw_posting_date, formats=posting_formats)
 
             if not transaction_date and posting_date:
                 transaction_date = posting_date
             if not posting_date and transaction_date:
-                posting_date = transaction_date
+                posting_date = default_posting_date or transaction_date
 
             if not transaction_date and not posting_date:
                 if not merchant_raw and not amount_raw:
@@ -187,7 +226,7 @@ def parse_transactions_csv(
             if charged_value:
                 charged_amount, charged_currency = parse_money(charged_value)
 
-            rows.append(
+            parsed_rows.append(
                 {
                     "transaction_date": transaction_date,
                     "posting_date": posting_date,
@@ -202,4 +241,4 @@ def parse_transactions_csv(
         except ValueError as exc:
             raise ValueError(f"Row {row_index}: {exc}") from exc
 
-    return rows
+    return parsed_rows
