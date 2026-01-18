@@ -38,21 +38,31 @@ function toMonthLabel(value) {
   return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(date);
 }
 
-function SortedTooltip({ active, payload, label }) {
+function SortedTooltip({ active, payload, label, totalByMonth, seriesCount }) {
   if (!active || !payload?.length) {
     return null;
   }
+  const monthKey = payload?.[0]?.payload?.month;
   const sorted = [...payload].sort(
     (a, b) => Number(b.value || 0) - Number(a.value || 0)
   );
-  const total = sorted.reduce((sum, entry) => sum + Number(entry.value || 0), 0);
+  const topTotal = sorted.reduce(
+    (sum, entry) => sum + Number(entry.value || 0),
+    0
+  );
+  const total = totalByMonth?.[monthKey] ?? topTotal;
   return (
     <div className="tooltip">
       <strong>{label}</strong>
       <div className="tooltip-total">
-        <span>Total</span>
+        <span>Month total</span>
         <span>{formatMoney(total)}</span>
       </div>
+      <div className="tooltip-total">
+        <span>Top {seriesCount} total</span>
+        <span>{formatMoney(topTotal)}</span>
+      </div>
+      <div className="tooltip-note">Top {seriesCount} categories shown</div>
       <div className="tooltip-list">
         {sorted.map((entry) => (
           <div
@@ -75,6 +85,7 @@ export default function CategoriesReport() {
   const [years, setYears] = useState([]);
   const [limit, setLimit] = useState(6);
   const [items, setItems] = useState([]);
+  const [monthlyTotals, setMonthlyTotals] = useState({});
   const [categories, setCategories] = useState([]);
   const [filter, setFilter] = useState("");
   const [listOffset, setListOffset] = useState(0);
@@ -103,16 +114,23 @@ export default function CategoriesReport() {
     async function loadData() {
       try {
         setLoading(true);
-        const [monthlyRes] = await Promise.all([
+        const [monthlyRes, totalsRes] = await Promise.all([
           fetch(
             `${API_BASE}/reports/category-monthly?year=${year}&limit=${limit}`
           ),
+          fetch(`${API_BASE}/reports/monthly-trend?year=${year}`),
         ]);
-        if (!monthlyRes.ok) {
+        if (!monthlyRes.ok || !totalsRes.ok) {
           throw new Error("Failed to load category report");
         }
         const monthlyData = await monthlyRes.json();
+        const totalsData = await totalsRes.json();
         setItems(monthlyData.items ?? []);
+        const totalsMap = {};
+        (totalsData.items ?? []).forEach((item) => {
+          totalsMap[item.month] = Number(item.total || 0);
+        });
+        setMonthlyTotals(totalsMap);
         setError("");
       } catch (err) {
         setError(err.message);
@@ -229,7 +247,14 @@ export default function CategoriesReport() {
             >
               <XAxis dataKey="label" />
               <YAxis hide />
-              <Tooltip content={<SortedTooltip />} />
+              <Tooltip
+                content={
+                  <SortedTooltip
+                    totalByMonth={monthlyTotals}
+                    seriesCount={series.length}
+                  />
+                }
+              />
               <Legend />
               {series.map((name, index) => (
                 <Bar

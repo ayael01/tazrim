@@ -43,18 +43,24 @@ function SortedTooltip({ active, payload, totalByMonth, seriesCount }) {
     return null;
   }
   const monthKey = payload?.[0]?.payload?.month;
-  const sorted = payload
-    .filter((entry) => Number(entry.value || 0) !== 0)
-    .sort(
+  const sorted = [...payload].sort(
     (a, b) => Number(b.value || 0) - Number(a.value || 0)
   );
-  const total = totalByMonth?.[monthKey] ?? sorted.reduce((sum, entry) => sum + Number(entry.value || 0), 0);
+  const topTotal = sorted.reduce(
+    (sum, entry) => sum + Number(entry.value || 0),
+    0
+  );
+  const total = totalByMonth?.[monthKey] ?? topTotal;
   return (
     <div className="tooltip">
       <strong>{payload?.[0]?.payload?.label}</strong>
       <div className="tooltip-total">
-        <span>Total</span>
+        <span>Month total</span>
         <span>{formatMoney(total)}</span>
+      </div>
+      <div className="tooltip-total">
+        <span>Top {seriesCount} total</span>
+        <span>{formatMoney(topTotal)}</span>
       </div>
       <div className="tooltip-note">Top {seriesCount} merchants shown</div>
       <div className="tooltip-list">
