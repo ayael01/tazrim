@@ -413,6 +413,12 @@ h1 {
   height: 220px;
 }
 
+.chart .recharts-wrapper,
+.chart .recharts-surface,
+.chart .recharts-tooltip-wrapper {
+  cursor: pointer;
+}
+
 .list {
   margin: 12px 0 0;
   padding: 0;
