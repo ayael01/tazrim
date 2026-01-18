@@ -612,6 +612,17 @@ h1 {
   background: var(--surface-muted);
 }
 
+.detail-row.clickable {
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.detail-row.clickable:hover {
+  background: rgba(255, 138, 75, 0.12);
+  box-shadow: none;
+  transform: translateY(0);
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

@@ -60,6 +60,7 @@ class MonthlyBreakdownResponse(BaseModel):
 
 
 class MerchantSpend(BaseModel):
+    id: Optional[int]
     name: str
     total: Decimal
 

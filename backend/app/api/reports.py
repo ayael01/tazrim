@@ -262,11 +262,13 @@ def category_month_detail(
     month_end = datetime(year + (month == 12), 1 if month == 12 else month + 1, 1)
     amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
     category_name = func.coalesce(Category.name, "Uncategorized")
+    merchant_id = Merchant.id
     merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
 
     rows = (
         db.query(
             category_name.label("category"),
+            merchant_id.label("merchant_id"),
             merchant_name.label("merchant"),
             func.sum(amount_expr).label("total"),
         )
@@ -276,7 +278,7 @@ def category_month_detail(
         .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
         .filter(Transaction.transaction_date >= month_start)
         .filter(Transaction.transaction_date < month_end)
-        .group_by(category_name, merchant_name)
+        .group_by(category_name, merchant_id, merchant_name)
         .order_by(category_name, func.sum(amount_expr).desc())
         .all()
     )
@@ -291,7 +293,9 @@ def category_month_detail(
             )
         category_entry = category_map[row.category]
         category_entry.total += row.total
-        category_entry.merchants.append(MerchantSpend(name=row.merchant, total=row.total))
+        category_entry.merchants.append(
+            MerchantSpend(id=row.merchant_id, name=row.merchant, total=row.total)
+        )
 
     categories = sorted(category_map.values(), key=lambda item: item.total, reverse=True)
     month_label = f"{year:04d}-{month:02d}"
@@ -432,10 +436,15 @@ def category_month_merchants(
     month_start = datetime(year, month, 1)
     month_end = datetime(year + (month == 12), 1 if month == 12 else month + 1, 1)
     amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    merchant_id = Merchant.id
     merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
 
     query = (
-        db.query(merchant_name.label("merchant"), func.sum(amount_expr).label("total"))
+        db.query(
+            merchant_id.label("merchant_id"),
+            merchant_name.label("merchant"),
+            func.sum(amount_expr).label("total"),
+        )
         .select_from(Transaction)
         .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
         .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
@@ -457,7 +466,7 @@ def category_month_merchants(
         resolved_id = category.id
 
     rows = (
-        query.group_by(merchant_name)
+        query.group_by(merchant_id, merchant_name)
         .order_by(func.sum(amount_expr).desc())
         .all()
     )
@@ -468,8 +477,13 @@ def category_month_merchants(
         month=month_label,
         category_id=resolved_id,
         category_name=category_name,
-        merchants=[MerchantSpend(name=row.merchant, total=row.total) for row in rows],
+        merchants=[
+            MerchantSpend(id=row.merchant_id, name=row.merchant, total=row.total)
+            for row in rows
+        ],
     )
+
+
 @router.get("/years", response_model=YearsResponse)
 def available_years(db: Session = Depends(get_db)) -> YearsResponse:
     rows = (

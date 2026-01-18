@@ -27,8 +27,11 @@ export default function CategoryMonthDetail() {
   const navigate = useNavigate();
   const { year, month: monthNumber } = parseMonthParam(month);
   const [data, setData] = useState(null);
+  const [selectedMerchant, setSelectedMerchant] = useState(null);
+  const [monthTransactions, setMonthTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [popupError, setPopupError] = useState("");
 
   useEffect(() => {
     async function loadDetail() {
@@ -56,6 +59,34 @@ export default function CategoryMonthDetail() {
     loadDetail();
   }, [year, monthNumber]);
 
+  useEffect(() => {
+    async function loadTransactions() {
+      if (!selectedMerchant || !year || !monthNumber) {
+        return;
+      }
+      try {
+        const params = new URLSearchParams({
+          merchant_id: selectedMerchant.id,
+          year,
+          month: monthNumber,
+        });
+        const response = await fetch(
+          `${API_BASE}/transactions/merchant-month?${params.toString()}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to load transactions");
+        }
+        const payload = await response.json();
+        setMonthTransactions(payload.items ?? []);
+        setPopupError("");
+      } catch (err) {
+        setPopupError(err.message);
+      }
+    }
+
+    loadTransactions();
+  }, [selectedMerchant, year, monthNumber]);
+
   return (
     <div className="report-page">
       <header className="page-header">
@@ -81,7 +112,26 @@ export default function CategoryMonthDetail() {
               </div>
               <div className="detail-list">
                 {category.merchants.map((merchant) => (
-                  <div className="detail-row" key={merchant.name}>
+                  <div
+                    className={`detail-row${merchant.id ? " clickable" : ""}`}
+                    key={`${category.name}-${merchant.name}`}
+                    onClick={() => {
+                      if (!merchant.id) {
+                        return;
+                      }
+                      setSelectedMerchant({ id: merchant.id, name: merchant.name });
+                    }}
+                    role={merchant.id ? "button" : undefined}
+                    tabIndex={merchant.id ? 0 : undefined}
+                    onKeyDown={(event) => {
+                      if (!merchant.id) {
+                        return;
+                      }
+                      if (event.key === "Enter" || event.key === " ") {
+                        setSelectedMerchant({ id: merchant.id, name: merchant.name });
+                      }
+                    }}
+                  >
                     <span>{merchant.name}</span>
                     <strong>{formatMoney(merchant.total)}</strong>
                   </div>
@@ -90,6 +140,39 @@ export default function CategoryMonthDetail() {
             </div>
           ))}
         </section>
+      )}
+
+      {selectedMerchant && (
+        <div className="modal-overlay" onClick={() => setSelectedMerchant(null)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="card-header">
+              <h3>
+                Transactions in {data?.month ?? month} · {selectedMerchant.name}
+              </h3>
+              <button
+                className="ghost-button"
+                onClick={() => setSelectedMerchant(null)}
+              >
+                Close
+              </button>
+            </div>
+            {popupError && <span className="pill error">{popupError}</span>}
+            <div className="detail-list">
+              {monthTransactions.map((tx) => (
+                <div className="detail-row" key={tx.id}>
+                  <span>
+                    {new Date(tx.transaction_date).toLocaleDateString("en-GB")}
+                    {tx.posting_date
+                      ? ` · billed ${new Date(tx.posting_date).toLocaleDateString("en-GB")}`
+                      : ""}{" "}
+                    · {tx.merchant_raw}
+                  </span>
+                  <strong>{formatMoney(tx.charged_amount ?? tx.amount)}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
