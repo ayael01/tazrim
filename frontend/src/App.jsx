@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard.jsx";
+import BankDashboard from "./pages/BankDashboard.jsx";
 import CategoriesReport from "./pages/CategoriesReport.jsx";
 import MerchantsReport from "./pages/MerchantsReport.jsx";
 import CategoryMonthDetail from "./pages/CategoryMonthDetail.jsx";
@@ -8,6 +9,9 @@ import CategoryDetail from "./pages/CategoryDetail.jsx";
 import MerchantDetail from "./pages/MerchantDetail.jsx";
 import ImportDetail from "./pages/ImportDetail.jsx";
 import MerchantMonthDetail from "./pages/MerchantMonthDetail.jsx";
+import BankCategoriesReport from "./pages/BankCategoriesReport.jsx";
+import BankMonthDetail from "./pages/BankMonthDetail.jsx";
+import BankImportDetail from "./pages/BankImportDetail.jsx";
 
 export default function App() {
   return (
@@ -57,12 +61,18 @@ export default function App() {
           </NavLink>
           <NavLink to="/categories">Categories</NavLink>
           <NavLink to="/merchants">Merchants</NavLink>
+          <NavLink to="/bank">Bank</NavLink>
+          <NavLink to="/bank/categories">Bank categories</NavLink>
         </nav>
       </header>
 
       <main className="content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/bank" element={<BankDashboard />} />
+          <Route path="/bank/categories" element={<BankCategoriesReport />} />
+          <Route path="/bank/month/:month" element={<BankMonthDetail />} />
+          <Route path="/bank/imports/:importId" element={<BankImportDetail />} />
           <Route path="/categories" element={<CategoriesReport />} />
           <Route path="/categories/month/:month" element={<CategoryMonthDetail />} />
           <Route path="/categories/:categoryId" element={<CategoryDetail />} />

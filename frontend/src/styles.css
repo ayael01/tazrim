@@ -603,6 +603,18 @@ h1 {
   margin-bottom: 12px;
 }
 
+.two-column {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.two-column h4 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--ink);
+}
+
 .detail-list {
   display: grid;
   gap: 8px;
