@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -83,6 +84,12 @@ def import_bank_activities(
         link.payee_id: link
         for link in db.query(BankPayeeCategoryMap).all()
     }
+    payee_category_options = defaultdict(set)
+    for row in rows:
+        raw_category = row.get("raw_category_text")
+        if not raw_category:
+            continue
+        payee_category_options[row["normalized_payee"]].add(raw_category)
 
     for row in rows:
         raw_category = row.get("raw_category_text")
@@ -96,10 +103,13 @@ def import_bank_activities(
             categories_by_name[raw_category] = category
 
         payee = payees_by_normalized[row["normalized_payee"]]
-        if payee.id not in payee_category_map:
-            link = BankPayeeCategoryMap(payee_id=payee.id, category_id=category.id)
-            db.add(link)
-            payee_category_map[payee.id] = link
+        if payee.id in payee_category_map:
+            continue
+        if len(payee_category_options[row["normalized_payee"]]) != 1:
+            continue
+        link = BankPayeeCategoryMap(payee_id=payee.id, category_id=category.id)
+        db.add(link)
+        payee_category_map[payee.id] = link
 
     db.flush()
 

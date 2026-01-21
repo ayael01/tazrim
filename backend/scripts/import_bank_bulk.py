@@ -5,6 +5,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from collections import defaultdict
 
 from dotenv import load_dotenv
 
@@ -136,6 +137,12 @@ def main() -> None:
                 link.payee_id: link
                 for link in session.query(BankPayeeCategoryMap).all()
             }
+            payee_category_options = defaultdict(set)
+            for row in rows:
+                raw_category = row.get("raw_category_text")
+                if not raw_category:
+                    continue
+                payee_category_options[row["normalized_payee"]].add(raw_category)
 
             for row in rows:
                 raw_category = row.get("raw_category_text")
@@ -149,13 +156,16 @@ def main() -> None:
                     categories_by_name[raw_category] = category
 
                 payee = payees_by_normalized[row["normalized_payee"]]
-                if payee.id not in payee_category_map:
-                    link = BankPayeeCategoryMap(
-                        payee_id=payee.id,
-                        category_id=category.id,
-                    )
-                    session.add(link)
-                    payee_category_map[payee.id] = link
+                if payee.id in payee_category_map:
+                    continue
+                if len(payee_category_options[row["normalized_payee"]]) != 1:
+                    continue
+                link = BankPayeeCategoryMap(
+                    payee_id=payee.id,
+                    category_id=category.id,
+                )
+                session.add(link)
+                payee_category_map[payee.id] = link
 
             session.flush()
 
