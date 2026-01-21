@@ -34,11 +34,13 @@ def list_bank_categories(
         if direction == "income"
         else func.coalesce(BankActivity.debit, 0)
     )
-    category_name = func.coalesce(BankActivityCategory.name, "Uncategorized")
+    category_name = func.coalesce(
+        BankActivity.raw_category_text, BankActivityCategory.name, "Uncategorized"
+    )
 
     query = (
         db.query(
-            BankActivityCategory.id.label("id"),
+            func.min(BankActivityCategory.id).label("id"),
             category_name.label("name"),
             func.sum(amount_expr).label("total"),
         )
@@ -49,7 +51,7 @@ def list_bank_categories(
             BankActivityCategory,
             BankPayeeCategoryMap.category_id == BankActivityCategory.id,
         )
-        .group_by(BankActivityCategory.id, category_name)
+        .group_by(category_name)
         .order_by(func.sum(amount_expr).desc())
     )
 

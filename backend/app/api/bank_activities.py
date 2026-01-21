@@ -30,11 +30,15 @@ def list_bank_activities(
 ) -> BankActivityList:
     total_query = db.query(func.count(BankActivity.id))
 
+    category_name = func.coalesce(
+        BankActivity.raw_category_text, BankActivityCategory.name, "Uncategorized"
+    )
+
     query = (
         db.query(
             BankActivity,
             BankPayee.display_name.label("payee_name"),
-            BankActivityCategory.name.label("category_name"),
+            category_name.label("category_name"),
         )
         .outerjoin(BankPayee, BankActivity.payee_id == BankPayee.id)
         .outerjoin(BankPayeeCategoryMap, BankPayee.id == BankPayeeCategoryMap.payee_id)

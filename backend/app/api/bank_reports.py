@@ -172,56 +172,95 @@ def category_monthly(
     direction: str = Query("expense", pattern="^(income|expense)$"),
     db: Session = Depends(get_db),
 ) -> BankMonthlyBreakdownResponse:
+    rows = _category_monthly_rows(db, year, direction, limit=limit)
     selected_year = _year_or_default(year, db)
-    amount_expr = (
-        func.coalesce(BankActivity.credit, 0)
-        if direction == "income"
-        else func.coalesce(BankActivity.debit, 0)
-    )
-    category_name = func.coalesce(BankActivityCategory.name, "Uncategorized")
-    month_bucket = func.date_trunc("month", BankActivity.activity_date)
-    month_label = func.to_char(month_bucket, "YYYY-MM")
-
-    top_names = (
-        db.query(category_name.label("name"))
-        .select_from(BankActivity)
-        .outerjoin(BankPayee, BankActivity.payee_id == BankPayee.id)
-        .outerjoin(BankPayeeCategoryMap, BankPayee.id == BankPayeeCategoryMap.payee_id)
-        .outerjoin(
-            BankActivityCategory,
-            BankPayeeCategoryMap.category_id == BankActivityCategory.id,
-        )
-        .filter(func.extract("year", BankActivity.activity_date) == selected_year)
-        .filter(amount_expr > 0)
-        .group_by(category_name)
-        .order_by(func.sum(amount_expr).desc())
-        .limit(limit)
-        .subquery()
-    )
-
-    rows = (
-        db.query(month_label.label("month"), category_name.label("name"), func.sum(amount_expr).label("total"))
-        .select_from(BankActivity)
-        .outerjoin(BankPayee, BankActivity.payee_id == BankPayee.id)
-        .outerjoin(BankPayeeCategoryMap, BankPayee.id == BankPayeeCategoryMap.payee_id)
-        .outerjoin(
-            BankActivityCategory,
-            BankPayeeCategoryMap.category_id == BankActivityCategory.id,
-        )
-        .filter(func.extract("year", BankActivity.activity_date) == selected_year)
-        .filter(amount_expr > 0)
-        .filter(category_name.in_(db.query(top_names.c.name)))
-        .group_by(month_bucket, month_label, category_name)
-        .order_by(month_bucket, category_name)
-        .all()
-    )
-
     return BankMonthlyBreakdownResponse(
         year=selected_year,
         items=[
             BankMonthlyBreakdownItem(month=row.month, name=row.name, total=row.total)
             for row in rows
         ],
+    )
+
+
+@router.get("/category-monthly-all", response_model=BankMonthlyBreakdownResponse)
+def category_monthly_all(
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    direction: str = Query("expense", pattern="^(income|expense)$"),
+    db: Session = Depends(get_db),
+) -> BankMonthlyBreakdownResponse:
+    rows = _category_monthly_rows(db, year, direction, limit=None)
+    selected_year = _year_or_default(year, db)
+    return BankMonthlyBreakdownResponse(
+        year=selected_year,
+        items=[
+            BankMonthlyBreakdownItem(month=row.month, name=row.name, total=row.total)
+            for row in rows
+        ],
+    )
+
+
+def _category_monthly_rows(
+    db: Session,
+    year: Optional[int],
+    direction: str,
+    limit: Optional[int],
+):
+    selected_year = _year_or_default(year, db)
+    amount_expr = (
+        func.coalesce(BankActivity.credit, 0)
+        if direction == "income"
+        else func.coalesce(BankActivity.debit, 0)
+    )
+    category_name = func.coalesce(
+        BankActivity.raw_category_text, BankActivityCategory.name, "Uncategorized"
+    )
+    month_bucket = func.date_trunc("month", BankActivity.activity_date)
+    month_label = func.to_char(month_bucket, "YYYY-MM")
+
+    top_names = None
+    if limit is not None:
+        top_names = (
+            db.query(category_name.label("name"))
+            .select_from(BankActivity)
+            .outerjoin(BankPayee, BankActivity.payee_id == BankPayee.id)
+            .outerjoin(
+                BankPayeeCategoryMap, BankPayee.id == BankPayeeCategoryMap.payee_id
+            )
+            .outerjoin(
+                BankActivityCategory,
+                BankPayeeCategoryMap.category_id == BankActivityCategory.id,
+            )
+            .filter(func.extract("year", BankActivity.activity_date) == selected_year)
+            .filter(amount_expr > 0)
+            .group_by(category_name)
+            .order_by(func.sum(amount_expr).desc())
+            .limit(limit)
+            .subquery()
+        )
+
+    query = (
+        db.query(
+            month_label.label("month"),
+            category_name.label("name"),
+            func.sum(amount_expr).label("total"),
+        )
+        .select_from(BankActivity)
+        .outerjoin(BankPayee, BankActivity.payee_id == BankPayee.id)
+        .outerjoin(BankPayeeCategoryMap, BankPayee.id == BankPayeeCategoryMap.payee_id)
+        .outerjoin(
+            BankActivityCategory,
+            BankPayeeCategoryMap.category_id == BankActivityCategory.id,
+        )
+        .filter(func.extract("year", BankActivity.activity_date) == selected_year)
+        .filter(amount_expr > 0)
+    )
+    if top_names is not None:
+        query = query.filter(category_name.in_(db.query(top_names.c.name)))
+    return (
+        query.group_by(month_bucket, month_label, category_name)
+        .order_by(month_bucket, category_name)
+        .all()
     )
 
 
@@ -239,7 +278,9 @@ def category_month_detail(
         if direction == "income"
         else func.coalesce(BankActivity.debit, 0)
     )
-    category_name = func.coalesce(BankActivityCategory.name, "Uncategorized")
+    category_name = func.coalesce(
+        BankActivity.raw_category_text, BankActivityCategory.name, "Uncategorized"
+    )
     payee_id = BankPayee.id
     payee_name = func.coalesce(BankPayee.display_name, BankActivity.payee_raw)
 

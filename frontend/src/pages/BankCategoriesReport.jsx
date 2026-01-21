@@ -3,23 +3,17 @@ import { useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
-  Legend,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
-const API_BASE = "http://localhost:8000";
+import { getCategoryColor } from "../utils/bankColors.js";
+import { formatMonthLabel } from "../utils/bankDates.js";
 
-const COLORS = [
-  "#ff8a4b",
-  "#3aa0ff",
-  "#7b61ff",
-  "#56c2a7",
-  "#f6c453",
-  "#ff7ac8",
-];
+const API_BASE = "http://localhost:8000";
 
 function formatMoney(value) {
   return new Intl.NumberFormat("en-IL", {
@@ -29,55 +23,41 @@ function formatMoney(value) {
   }).format(Number(value || 0));
 }
 
-function toMonthLabel(value) {
-  if (!value) {
-    return "";
-  }
-  const [year, month] = value.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(date);
+function formatAxis(value) {
+  return new Intl.NumberFormat("en-IL", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0));
 }
 
-function SortedTooltip({
-  active,
-  payload,
-  label,
-  totalByMonth,
-  seriesCount,
-  directionLabel,
-}) {
+function CategoryTooltip({ active, payload, label }) {
   if (!active || !payload?.length) {
     return null;
   }
-  const monthKey = payload?.[0]?.payload?.month;
-  const sorted = [...payload].sort(
-    (a, b) => Number(b.value || 0) - Number(a.value || 0)
-  );
-  const topTotal = sorted.reduce(
-    (sum, entry) => sum + Number(entry.value || 0),
-    0
-  );
-  const total = totalByMonth?.[monthKey] ?? topTotal;
+  const monthPayload = payload?.[0]?.payload || {};
+  const dataKey = String(payload?.[0]?.dataKey || "");
+  const direction = dataKey.startsWith("income_rank_") ? "income" : "expense";
+  const rows =
+    direction === "income" ? monthPayload.incomeStack : monthPayload.expenseStack;
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const total = safeRows.reduce((sum, entry) => sum + entry.value, 0);
   return (
     <div className="tooltip">
       <strong>{label}</strong>
       <div className="tooltip-total">
-        <span>{directionLabel} total</span>
+        <span>{direction === "income" ? "Income" : "Expenses"} total</span>
         <span>{formatMoney(total)}</span>
       </div>
-      <div className="tooltip-total">
-        <span>Top {seriesCount} total</span>
-        <span>{formatMoney(topTotal)}</span>
-      </div>
-      <div className="tooltip-note">Top {seriesCount} categories shown</div>
       <div className="tooltip-list">
-        {sorted.map((entry) => (
-          <div
-            key={entry.dataKey}
-            className="tooltip-row"
-            style={{ color: entry.color }}
-          >
-            <span>{entry.dataKey}</span>
+        {safeRows.map((entry) => (
+          <div key={entry.name} className="tooltip-row">
+            <span className="tooltip-label">
+              <span
+                className="tooltip-swatch"
+                style={{ background: getCategoryColor(direction, entry.name) }}
+              />
+              {entry.name}
+            </span>
             <span>{formatMoney(entry.value)}</span>
           </div>
         ))}
@@ -86,23 +66,32 @@ function SortedTooltip({
   );
 }
 
+function buildSelectionMap(categories, selected) {
+  const map = {};
+  categories.forEach((name) => {
+    map[name] = selected.has(name);
+  });
+  return map;
+}
+
 export default function BankCategoriesReport() {
   const navigate = useNavigate();
   const [year, setYear] = useState(new Date().getFullYear());
   const [years, setYears] = useState([]);
-  const [limit, setLimit] = useState(6);
+  const [cashflowItems, setCashflowItems] = useState([]);
   const [expenseItems, setExpenseItems] = useState([]);
   const [incomeItems, setIncomeItems] = useState([]);
-  const [expenseTotals, setExpenseTotals] = useState({});
-  const [incomeTotals, setIncomeTotals] = useState({});
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [incomeCategories, setIncomeCategories] = useState([]);
+  const [selectedExpenseCategories, setSelectedExpenseCategories] = useState(new Set());
+  const [selectedIncomeCategories, setSelectedIncomeCategories] = useState(new Set());
   const [filter, setFilter] = useState("");
   const [listOffset, setListOffset] = useState(0);
   const [listLoading, setListLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [initializedFilters, setInitializedFilters] = useState(false);
 
   useEffect(() => {
     async function loadYears() {
@@ -124,31 +113,20 @@ export default function BankCategoriesReport() {
     async function loadData() {
       try {
         setLoading(true);
-        const [expenseRes, incomeRes, totalsRes] = await Promise.all([
-          fetch(
-            `${API_BASE}/bank/reports/category-monthly?year=${year}&limit=${limit}&direction=expense`
-          ),
-          fetch(
-            `${API_BASE}/bank/reports/category-monthly?year=${year}&limit=${limit}&direction=income`
-          ),
+        const [cashflowRes, expenseRes, incomeRes] = await Promise.all([
           fetch(`${API_BASE}/bank/reports/monthly-cashflow?year=${year}`),
+          fetch(`${API_BASE}/bank/reports/category-monthly-all?year=${year}&direction=expense`),
+          fetch(`${API_BASE}/bank/reports/category-monthly-all?year=${year}&direction=income`),
         ]);
-        if (!expenseRes.ok || !incomeRes.ok || !totalsRes.ok) {
+        if (!cashflowRes.ok || !expenseRes.ok || !incomeRes.ok) {
           throw new Error("Failed to load bank category report");
         }
+        const cashflowData = await cashflowRes.json();
         const expenseData = await expenseRes.json();
         const incomeData = await incomeRes.json();
-        const totalsData = await totalsRes.json();
+        setCashflowItems(cashflowData.items ?? []);
         setExpenseItems(expenseData.items ?? []);
         setIncomeItems(incomeData.items ?? []);
-        const expenseMap = {};
-        const incomeMap = {};
-        (totalsData.items ?? []).forEach((item) => {
-          expenseMap[item.month] = Number(item.expense || 0);
-          incomeMap[item.month] = Number(item.income || 0);
-        });
-        setExpenseTotals(expenseMap);
-        setIncomeTotals(incomeMap);
         setError("");
       } catch (err) {
         setError(err.message);
@@ -157,13 +135,14 @@ export default function BankCategoriesReport() {
       }
     }
     loadData();
-  }, [year, limit]);
+  }, [year]);
 
   useEffect(() => {
     setExpenseCategories([]);
     setIncomeCategories([]);
     setListOffset(0);
     setHasMore(true);
+    setInitializedFilters(false);
   }, [year, filter]);
 
   useEffect(() => {
@@ -204,45 +183,140 @@ export default function BankCategoriesReport() {
     return () => controller.abort();
   }, [year, filter, listOffset, hasMore]);
 
-  const expenseChartData = useMemo(() => {
-    const months = Array.from(new Set(expenseItems.map((item) => item.month))).sort();
-    const names = Array.from(new Set(expenseItems.map((item) => item.name)));
-    return months.map((month) => {
-      const entry = { month, label: toMonthLabel(month) };
-      names.forEach((name) => {
-        const match = expenseItems.find(
-          (item) => item.month === month && item.name === name
-        );
-        entry[name] = match ? Number(match.total || 0) : 0;
-      });
+  useEffect(() => {
+    if (initializedFilters) {
+      return;
+    }
+    if (expenseCategories.length === 0 && incomeCategories.length === 0) {
+      return;
+    }
+    setSelectedExpenseCategories(new Set(expenseCategories.map((cat) => cat.name)));
+    setSelectedIncomeCategories(new Set(incomeCategories.map((cat) => cat.name)));
+    setInitializedFilters(true);
+  }, [expenseCategories, incomeCategories, initializedFilters]);
+
+  const chartData = useMemo(() => {
+    const months = Array.from(new Set(cashflowItems.map((item) => item.month))).sort();
+    let maxIncomeRanks = 0;
+    let maxExpenseRanks = 0;
+
+    const monthStacks = months.map((month) => {
+      const incomeStack = incomeItems
+        .filter((item) => item.month === month && selectedIncomeCategories.has(item.name))
+        .map((item) => ({ name: item.name, value: Number(item.total || 0) }))
+        .filter((item) => item.value > 0)
+        .sort((a, b) => b.value - a.value);
+      const expenseStack = expenseItems
+        .filter((item) => item.month === month && selectedExpenseCategories.has(item.name))
+        .map((item) => ({ name: item.name, value: Number(item.total || 0) }))
+        .filter((item) => item.value > 0)
+        .sort((a, b) => b.value - a.value);
+
+      maxIncomeRanks = Math.max(maxIncomeRanks, incomeStack.length);
+      maxExpenseRanks = Math.max(maxExpenseRanks, expenseStack.length);
+
+      return { month, incomeStack, expenseStack };
+    });
+
+    return monthStacks.map(({ month, incomeStack, expenseStack }) => {
+      const entry = {
+        month,
+        label: formatMonthLabel(month),
+        incomeStack,
+        expenseStack,
+      };
+      for (let i = 0; i < maxIncomeRanks; i += 1) {
+        const item = incomeStack[i];
+        entry[`income_rank_${i}`] = item ? item.value : 0;
+        entry[`income_rank_${i}_name`] = item ? item.name : null;
+      }
+      for (let i = 0; i < maxExpenseRanks; i += 1) {
+        const item = expenseStack[i];
+        entry[`expense_rank_${i}`] = item ? item.value : 0;
+        entry[`expense_rank_${i}_name`] = item ? item.name : null;
+      }
       return entry;
     });
-  }, [expenseItems]);
+  }, [cashflowItems, expenseItems, incomeItems, selectedExpenseCategories, selectedIncomeCategories]);
 
-  const incomeChartData = useMemo(() => {
-    const months = Array.from(new Set(incomeItems.map((item) => item.month))).sort();
-    const names = Array.from(new Set(incomeItems.map((item) => item.name)));
-    return months.map((month) => {
-      const entry = { month, label: toMonthLabel(month) };
-      names.forEach((name) => {
-        const match = incomeItems.find(
-          (item) => item.month === month && item.name === name
-        );
-        entry[name] = match ? Number(match.total || 0) : 0;
+  const expenseNames = useMemo(
+    () => expenseCategories.map((cat) => cat.name),
+    [expenseCategories]
+  );
+  const incomeNames = useMemo(
+    () => incomeCategories.map((cat) => cat.name),
+    [incomeCategories]
+  );
+
+  const maxIncomeRanks = useMemo(() => {
+    return chartData.reduce((max, entry) => {
+      let count = 0;
+      while (entry[`income_rank_${count}`] > 0 || entry[`income_rank_${count}_name`]) {
+        count += 1;
+      }
+      return Math.max(max, count);
+    }, 0);
+  }, [chartData]);
+
+  const maxExpenseRanks = useMemo(() => {
+    return chartData.reduce((max, entry) => {
+      let count = 0;
+      while (entry[`expense_rank_${count}`] > 0 || entry[`expense_rank_${count}_name`]) {
+        count += 1;
+      }
+      return Math.max(max, count);
+    }, 0);
+  }, [chartData]);
+
+  const expenseSelectionMap = buildSelectionMap(expenseNames, selectedExpenseCategories);
+  const incomeSelectionMap = buildSelectionMap(incomeNames, selectedIncomeCategories);
+
+  function toggleCategory(direction, name) {
+    if (direction === "income") {
+      setSelectedIncomeCategories((prev) => {
+        const next = new Set(prev);
+        if (next.has(name)) {
+          next.delete(name);
+        } else {
+          next.add(name);
+        }
+        return next;
       });
-      return entry;
-    });
-  }, [incomeItems]);
+    } else {
+      setSelectedExpenseCategories((prev) => {
+        const next = new Set(prev);
+        if (next.has(name)) {
+          next.delete(name);
+        } else {
+          next.add(name);
+        }
+        return next;
+      });
+    }
+  }
 
-  const expenseSeries = Array.from(new Set(expenseItems.map((item) => item.name)));
-  const incomeSeries = Array.from(new Set(incomeItems.map((item) => item.name)));
+  function selectAll(direction) {
+    if (direction === "income") {
+      setSelectedIncomeCategories(new Set(incomeNames));
+    } else {
+      setSelectedExpenseCategories(new Set(expenseNames));
+    }
+  }
+
+  function clearAll(direction) {
+    if (direction === "income") {
+      setSelectedIncomeCategories(new Set());
+    } else {
+      setSelectedExpenseCategories(new Set());
+    }
+  }
 
   return (
     <div className="report-page">
       <header className="page-header">
         <div>
           <h1>Bank category report</h1>
-          <p>Track how category outflows spread across the year.</p>
+          <p>Compare monthly income and expenses at a glance.</p>
         </div>
         <div className="year-picker">
           <label>
@@ -259,99 +333,81 @@ export default function BankCategoriesReport() {
             <span className="helper">Available: {years.join(", ")}</span>
           )}
         </div>
-        <div className="series-picker">
-          <label>
-            Chart series
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={limit}
-              onChange={(event) => setLimit(Number(event.target.value))}
-            />
-          </label>
-          <span className="helper">Controls chart only</span>
-        </div>
       </header>
 
       <section className="card report-card">
         <div className="card-header">
-          <h3>Monthly expense categories</h3>
-          <p>Top expense categories stacked by month</p>
+          <h3>Income vs expense categories</h3>
+          <p>Grouped bars with category composition</p>
         </div>
-        <div className="chart">
-          <ResponsiveContainer width="100%" height={280}>
+        <div className="chart chart-wrapper">
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={expenseChartData}
+              data={chartData}
+              barCategoryGap={18}
+              barGap={6}
+              margin={{ top: 16, right: 20, left: 0, bottom: 28 }}
               onClick={(data) => {
                 const monthValue = data?.activePayload?.[0]?.payload?.month;
+                const dataKey = data?.activePayload?.[0]?.dataKey || "";
                 if (!monthValue) {
                   return;
                 }
-                navigate(`/bank/month/${monthValue}?direction=expense`);
+                const direction = String(dataKey).startsWith("income_rank_")
+                  ? "income"
+                  : "expense";
+                navigate(`/bank/month/${monthValue}?direction=${direction}`, {
+                  state: {
+                    income: Array.from(selectedIncomeCategories),
+                    expense: Array.from(selectedExpenseCategories),
+                  },
+                });
               }}
             >
               <XAxis dataKey="label" />
-              <YAxis hide />
-              <Tooltip
-                content={
-                  <SortedTooltip
-                    totalByMonth={expenseTotals}
-                    seriesCount={expenseSeries.length}
-                    directionLabel="Expense"
-                  />
-                }
-              />
-              <Legend />
-              {expenseSeries.map((name, index) => (
+              <YAxis tickFormatter={formatAxis} />
+              <Tooltip content={(props) => <CategoryTooltip {...props} />} />
+              {Array.from({ length: maxIncomeRanks }, (_, index) => (
                 <Bar
-                  key={name}
-                  dataKey={name}
-                  stackId="categories"
-                  fill={COLORS[index % COLORS.length]}
-                />
+                  key={`income_rank_${index}`}
+                  dataKey={`income_rank_${index}`}
+                  stackId="income"
+                  name={`Income rank ${index + 1}`}
+                  stroke="#FFFFFF"
+                  strokeWidth={1}
+                  fillOpacity={0.95}
+                >
+                  {chartData.map((entry) => {
+                    const name = entry[`income_rank_${index}_name`];
+                    return (
+                      <Cell
+                        key={`income-cell-${entry.month}-${index}`}
+                        fill={name ? getCategoryColor("income", name) : "transparent"}
+                      />
+                    );
+                  })}
+                </Bar>
               ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      <section className="card report-card">
-        <div className="card-header">
-          <h3>Monthly income categories</h3>
-          <p>Top income categories stacked by month</p>
-        </div>
-        <div className="chart">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart
-              data={incomeChartData}
-              onClick={(data) => {
-                const monthValue = data?.activePayload?.[0]?.payload?.month;
-                if (!monthValue) {
-                  return;
-                }
-                navigate(`/bank/month/${monthValue}?direction=income`);
-              }}
-            >
-              <XAxis dataKey="label" />
-              <YAxis hide />
-              <Tooltip
-                content={
-                  <SortedTooltip
-                    totalByMonth={incomeTotals}
-                    seriesCount={incomeSeries.length}
-                    directionLabel="Income"
-                  />
-                }
-              />
-              <Legend />
-              {incomeSeries.map((name, index) => (
+              {Array.from({ length: maxExpenseRanks }, (_, index) => (
                 <Bar
-                  key={name}
-                  dataKey={name}
-                  stackId="categories"
-                  fill={COLORS[index % COLORS.length]}
-                />
+                  key={`expense_rank_${index}`}
+                  dataKey={`expense_rank_${index}`}
+                  stackId="expense"
+                  name={`Expense rank ${index + 1}`}
+                  stroke="#FFFFFF"
+                  strokeWidth={1}
+                  fillOpacity={0.95}
+                >
+                  {chartData.map((entry) => {
+                    const name = entry[`expense_rank_${index}_name`];
+                    return (
+                      <Cell
+                        key={`expense-cell-${entry.month}-${index}`}
+                        fill={name ? getCategoryColor("expense", name) : "transparent"}
+                      />
+                    );
+                  })}
+                </Bar>
               ))}
             </BarChart>
           </ResponsiveContainer>
@@ -361,7 +417,7 @@ export default function BankCategoriesReport() {
       <section className="card report-card">
         <div className="card-header">
           <h3>All categories</h3>
-          <p>Split by income and expense</p>
+          <p>Filter what appears in the chart</p>
         </div>
         <div className="search">
           <input
@@ -373,23 +429,77 @@ export default function BankCategoriesReport() {
         </div>
         <div className="two-column">
           <div>
-            <h4>Expenses</h4>
-            <ul className="list selectable">
+            <div className="category-header">
+              <h4>Expenses</h4>
+              <div className="category-actions">
+                <button
+                  className="ghost-button small"
+                  onClick={() => selectAll("expense")}
+                >
+                  Select all
+                </button>
+                <button
+                  className="ghost-button small"
+                  onClick={() => clearAll("expense")}
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+            <ul className="category-list">
               {expenseCategories.map((item) => (
                 <li key={`expense-${item.id ?? "uncat"}-${item.name}`}>
-                  <span>{item.name}</span>
-                  <strong>{formatMoney(item.total)}</strong>
+                  <label className="category-item">
+                    <input
+                      type="checkbox"
+                      checked={expenseSelectionMap[item.name] || false}
+                      onChange={() => toggleCategory("expense", item.name)}
+                    />
+                    <span
+                      className="category-swatch"
+                      style={{ background: getCategoryColor("expense", item.name) }}
+                    />
+                    <span className="category-name">{item.name}</span>
+                    <strong>{formatMoney(item.total)}</strong>
+                  </label>
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <h4>Income</h4>
-            <ul className="list selectable">
+            <div className="category-header">
+              <h4>Income</h4>
+              <div className="category-actions">
+                <button
+                  className="ghost-button small"
+                  onClick={() => selectAll("income")}
+                >
+                  Select all
+                </button>
+                <button
+                  className="ghost-button small"
+                  onClick={() => clearAll("income")}
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+            <ul className="category-list">
               {incomeCategories.map((item) => (
                 <li key={`income-${item.id ?? "uncat"}-${item.name}`}>
-                  <span>{item.name}</span>
-                  <strong>{formatMoney(item.total)}</strong>
+                  <label className="category-item">
+                    <input
+                      type="checkbox"
+                      checked={incomeSelectionMap[item.name] || false}
+                      onChange={() => toggleCategory("income", item.name)}
+                    />
+                    <span
+                      className="category-swatch"
+                      style={{ background: getCategoryColor("income", item.name) }}
+                    />
+                    <span className="category-name">{item.name}</span>
+                    <strong>{formatMoney(item.total)}</strong>
+                  </label>
                 </li>
               ))}
             </ul>
