@@ -12,6 +12,7 @@ import MerchantMonthDetail from "./pages/MerchantMonthDetail.jsx";
 import BankCategoriesReport from "./pages/BankCategoriesReport.jsx";
 import BankMonthDetail from "./pages/BankMonthDetail.jsx";
 import BankImportDetail from "./pages/BankImportDetail.jsx";
+import BankImportDraftReview from "./pages/BankImportDraftReview.jsx";
 
 export default function App() {
   return (
@@ -73,6 +74,7 @@ export default function App() {
           <Route path="/bank/categories" element={<BankCategoriesReport />} />
           <Route path="/bank/month/:month" element={<BankMonthDetail />} />
           <Route path="/bank/imports/:importId" element={<BankImportDetail />} />
+          <Route path="/bank/imports/drafts/:draftId" element={<BankImportDraftReview />} />
           <Route path="/categories" element={<CategoriesReport />} />
           <Route path="/categories/month/:month" element={<CategoryMonthDetail />} />
           <Route path="/categories/:categoryId" element={<CategoryDetail />} />

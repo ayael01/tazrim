@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = "http://localhost:8000";
 
 export default function BankUploadCard({ onUploaded }) {
+  const navigate = useNavigate();
   const [periodMonth, setPeriodMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -27,7 +29,7 @@ export default function BankUploadCard({ onUploaded }) {
       formData.append("account_name", "Mizrahi Checking");
       formData.append("file", file);
 
-      const response = await fetch(`${API_BASE}/bank/imports`, {
+      const response = await fetch(`${API_BASE}/bank/imports/drafts`, {
         method: "POST",
         body: formData,
       });
@@ -37,9 +39,13 @@ export default function BankUploadCard({ onUploaded }) {
         throw new Error(payload.detail || "Upload failed");
       }
 
-      setStatus("Upload complete. Data refreshed.");
+      const payload = await response.json();
+      setStatus("Upload complete. Awaiting approval.");
       setFile(null);
       onUploaded?.();
+      if (payload?.id) {
+        navigate(`/bank/imports/drafts/${payload.id}`);
+      }
     } catch (err) {
       setError(err.message);
       setStatus("");
@@ -51,8 +57,8 @@ export default function BankUploadCard({ onUploaded }) {
       <div>
         <h3>Import bank activities</h3>
         <p>
-          Upload the monthly CSV export. We will map payees and flag anything
-          uncategorized.
+          Upload the monthly CSV export. Review categories before importing
+          anything into the database.
         </p>
         <button
           type="button"

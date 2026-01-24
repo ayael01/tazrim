@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import BankUploadCard from "../components/BankUploadCard.jsx";
 import BankUnknownPayeesCard from "../components/BankUnknownPayeesCard.jsx";
 import BankImportHistoryCard from "../components/BankImportHistoryCard.jsx";
+import BankImportDraftHistoryCard from "../components/BankImportDraftHistoryCard.jsx";
 
 const API_BASE = "http://localhost:8000";
 
@@ -38,6 +39,7 @@ export default function BankDashboard() {
   const [categories, setCategories] = useState([]);
   const [unknownPayees, setUnknownPayees] = useState([]);
   const [importBatches, setImportBatches] = useState([]);
+  const [importDrafts, setImportDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,6 +53,7 @@ export default function BankDashboard() {
         categoriesRes,
         unknownRes,
         importsRes,
+        draftsRes,
       ] = await Promise.all([
         fetch(`${API_BASE}/bank/reports/summary?year=${year}`),
         fetch(`${API_BASE}/bank/reports/monthly-cashflow?year=${year}`),
@@ -58,6 +61,7 @@ export default function BankDashboard() {
         fetch(`${API_BASE}/bank/categories`),
         fetch(`${API_BASE}/bank/payees/unknown?limit=6`),
         fetch(`${API_BASE}/bank/imports?limit=5`),
+        fetch(`${API_BASE}/bank/imports/drafts?limit=5`),
       ]);
 
       if (
@@ -66,7 +70,8 @@ export default function BankDashboard() {
         !activityRes.ok ||
         !categoriesRes.ok ||
         !unknownRes.ok ||
-        !importsRes.ok
+        !importsRes.ok ||
+        !draftsRes.ok
       ) {
         throw new Error("Failed to load bank dashboard data");
       }
@@ -77,6 +82,7 @@ export default function BankDashboard() {
       const categoriesData = await categoriesRes.json();
       const unknownData = await unknownRes.json();
       const importsData = await importsRes.json();
+      const draftsData = await draftsRes.json();
 
       setSummary(summaryData);
       setTrend(trendData.items ?? []);
@@ -84,6 +90,7 @@ export default function BankDashboard() {
       setCategories(categoriesData ?? []);
       setUnknownPayees(unknownData ?? []);
       setImportBatches(importsData ?? []);
+      setImportDrafts(draftsData ?? []);
       setError("");
     } catch (err) {
       setError(err.message);
@@ -183,6 +190,11 @@ export default function BankDashboard() {
 
       <section className="dashboard-grid">
         <BankUploadCard onUploaded={loadDashboard} />
+        <BankImportDraftHistoryCard
+          drafts={importDrafts}
+          onDiscard={loadDashboard}
+          onReview={(id) => navigate(`/bank/imports/drafts/${id}`)}
+        />
         <BankImportHistoryCard
           batches={importBatches}
           onRollback={loadDashboard}

@@ -64,6 +64,38 @@ class BankImportSummary(BaseModel):
     unknown_payees: int
 
 
+class BankImportDraftOut(BaseModel):
+    id: int
+    source_filename: Optional[str]
+    period_month: str
+    status: str
+    row_count: int
+    created_at: str
+
+
+class BankImportDraftRowOut(BaseModel):
+    id: int
+    row_index: int
+    activity_date: str
+    value_date: Optional[str]
+    description: str
+    reference: Optional[str]
+    debit: Optional[Decimal]
+    credit: Optional[Decimal]
+    balance: Optional[Decimal]
+    currency: Optional[str]
+    payee_raw: str
+    raw_category_text: Optional[str]
+    suggested_category_text: Optional[str]
+    approved_category_text: Optional[str]
+
+
+class BankImportDraftDetail(BaseModel):
+    draft: BankImportDraftOut
+    rows: List[BankImportDraftRowOut]
+    total_rows: int
+
+
 class BankSummaryResponse(BaseModel):
     year: int
     income_total: Decimal

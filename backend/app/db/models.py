@@ -148,6 +148,51 @@ class BankActivityImportBatch(Base):
     activities = relationship("BankActivity", back_populates="import_batch")
 
 
+class BankActivityImportDraft(Base):
+    __tablename__ = "bank_activity_import_drafts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bank_account_id: Mapped[int] = mapped_column(ForeignKey("bank_accounts.id"))
+    source_filename: Mapped[Optional[str]] = mapped_column(String(255))
+    period_month: Mapped[Date] = mapped_column(Date, nullable=False)
+    row_count: Mapped[Optional[int]] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+
+    bank_account = relationship("BankAccount")
+    rows = relationship(
+        "BankActivityImportDraftRow",
+        back_populates="draft",
+        cascade="all, delete-orphan",
+    )
+
+
+class BankActivityImportDraftRow(Base):
+    __tablename__ = "bank_activity_import_draft_rows"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    draft_id: Mapped[int] = mapped_column(
+        ForeignKey("bank_activity_import_drafts.id", ondelete="CASCADE")
+    )
+    row_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    activity_date: Mapped[Date] = mapped_column(Date, nullable=False)
+    value_date: Mapped[Optional[Date]] = mapped_column(Date)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    reference: Mapped[Optional[str]] = mapped_column(String(50))
+    payee_raw: Mapped[str] = mapped_column(Text, nullable=False)
+    normalized_payee: Mapped[str] = mapped_column(String(200), nullable=False)
+    debit: Mapped[Optional[Numeric]] = mapped_column(Numeric(12, 2))
+    credit: Mapped[Optional[Numeric]] = mapped_column(Numeric(12, 2))
+    balance: Mapped[Optional[Numeric]] = mapped_column(Numeric(12, 2))
+    currency: Mapped[Optional[str]] = mapped_column(String(3))
+    raw_category_text: Mapped[Optional[str]] = mapped_column(Text)
+    suggested_category_text: Mapped[Optional[str]] = mapped_column(Text)
+    approved_category_text: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+
+    draft = relationship("BankActivityImportDraft", back_populates="rows")
+
+
 class BankActivity(Base):
     __tablename__ = "bank_activities"
 
