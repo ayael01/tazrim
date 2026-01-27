@@ -289,7 +289,7 @@ export default function BankMonthDetail() {
             navigate(year ? `/bank/categories?year=${year}` : "/bank/categories")
           }
         >
-          Back to report
+          Back to {year || "year"} report
         </button>
       </header>
 
