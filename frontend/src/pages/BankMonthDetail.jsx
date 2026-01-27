@@ -308,7 +308,7 @@ export default function BankMonthDetail() {
                 >
                   <XAxis dataKey="label" />
                   <YAxis tickFormatter={formatAxis} />
-                  <Tooltip content={(props) => <CategoryTooltip {...props} />} />
+                  <Tooltip shared={false} content={(props) => <CategoryTooltip {...props} />} />
                   {Array.from({ length: maxIncomeRanks }, (_, index) => (
                     <Bar
                       key={`income_rank_${index}`}

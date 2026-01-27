@@ -311,6 +311,19 @@ export default function BankCategoriesReport() {
     }
   }
 
+  function handleBarClick(direction, data) {
+    const monthValue = data?.payload?.month;
+    if (!monthValue) {
+      return;
+    }
+    navigate(`/bank/month/${monthValue}?direction=${direction}`, {
+      state: {
+        income: Array.from(selectedIncomeCategories),
+        expense: Array.from(selectedExpenseCategories),
+      },
+    });
+  }
+
   return (
     <div className="report-page">
       <header className="page-header">
@@ -347,26 +360,10 @@ export default function BankCategoriesReport() {
               barCategoryGap={18}
               barGap={6}
               margin={{ top: 16, right: 20, left: 0, bottom: 28 }}
-              onClick={(data) => {
-                const monthValue = data?.activePayload?.[0]?.payload?.month;
-                const dataKey = data?.activePayload?.[0]?.dataKey || "";
-                if (!monthValue) {
-                  return;
-                }
-                const direction = String(dataKey).startsWith("income_rank_")
-                  ? "income"
-                  : "expense";
-                navigate(`/bank/month/${monthValue}?direction=${direction}`, {
-                  state: {
-                    income: Array.from(selectedIncomeCategories),
-                    expense: Array.from(selectedExpenseCategories),
-                  },
-                });
-              }}
             >
               <XAxis dataKey="label" />
               <YAxis tickFormatter={formatAxis} />
-              <Tooltip content={(props) => <CategoryTooltip {...props} />} />
+              <Tooltip shared={false} content={(props) => <CategoryTooltip {...props} />} />
               {Array.from({ length: maxIncomeRanks }, (_, index) => (
                 <Bar
                   key={`income_rank_${index}`}
@@ -376,6 +373,7 @@ export default function BankCategoriesReport() {
                   stroke="#FFFFFF"
                   strokeWidth={1}
                   fillOpacity={0.95}
+                  onClick={(data) => handleBarClick("income", data)}
                 >
                   {chartData.map((entry) => {
                     const name = entry[`income_rank_${index}_name`];
@@ -397,6 +395,7 @@ export default function BankCategoriesReport() {
                   stroke="#FFFFFF"
                   strokeWidth={1}
                   fillOpacity={0.95}
+                  onClick={(data) => handleBarClick("expense", data)}
                 >
                   {chartData.map((entry) => {
                     const name = entry[`expense_rank_${index}_name`];
