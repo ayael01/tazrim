@@ -283,7 +283,12 @@ export default function BankMonthDetail() {
             adjust filters to explore the month.
           </p>
         </div>
-        <button className="ghost-button" onClick={() => navigate(-1)}>
+        <button
+          className="ghost-button"
+          onClick={() =>
+            navigate(year ? `/bank/categories?year=${year}` : "/bank/categories")
+          }
+        >
           Back to report
         </button>
       </header>

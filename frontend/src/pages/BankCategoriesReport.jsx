@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -76,7 +76,11 @@ function buildSelectionMap(categories, selected) {
 
 export default function BankCategoriesReport() {
   const navigate = useNavigate();
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialYearParam = Number(searchParams.get("year"));
+  const [year, setYear] = useState(
+    Number.isFinite(initialYearParam) ? initialYearParam : new Date().getFullYear()
+  );
   const [years, setYears] = useState([]);
   const [cashflowItems, setCashflowItems] = useState([]);
   const [expenseItems, setExpenseItems] = useState([]);
@@ -108,6 +112,14 @@ export default function BankCategoriesReport() {
     }
     loadYears();
   }, []);
+
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("year", String(year));
+      return next;
+    });
+  }, [setSearchParams, year]);
 
   useEffect(() => {
     async function loadData() {
@@ -316,7 +328,7 @@ export default function BankCategoriesReport() {
     if (!monthValue) {
       return;
     }
-    navigate(`/bank/month/${monthValue}?direction=${direction}`, {
+    navigate(`/bank/month/${monthValue}?direction=${direction}&year=${year}`, {
       state: {
         income: Array.from(selectedIncomeCategories),
         expense: Array.from(selectedExpenseCategories),
