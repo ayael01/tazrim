@@ -219,6 +219,22 @@ export default function BankMonthDetail() {
     selectedExpenseCategories,
   ]);
 
+  const monthIncomeTotal = useMemo(
+    () =>
+      monthIncomeCategories
+        .filter((item) => selectedIncomeCategories.has(item.name))
+        .reduce((sum, item) => sum + Number(item.total || 0), 0),
+    [monthIncomeCategories, selectedIncomeCategories]
+  );
+  const monthExpenseTotal = useMemo(
+    () =>
+      monthExpenseCategories
+        .filter((item) => selectedExpenseCategories.has(item.name))
+        .reduce((sum, item) => sum + Number(item.total || 0), 0),
+    [monthExpenseCategories, selectedExpenseCategories]
+  );
+  const monthNet = monthIncomeTotal - monthExpenseTotal;
+
   const maxIncomeRanks = chartData[0]?.incomeStack?.length ?? 0;
   const maxExpenseRanks = chartData[0]?.expenseStack?.length ?? 0;
 
@@ -302,6 +318,24 @@ export default function BankMonthDetail() {
             <div className="card-header">
               <h3>Income vs expense composition</h3>
               <p>Stacked breakdown for {formatMonthLabel(monthKey)}</p>
+            </div>
+            <div className="summary summary-inline">
+              <div className="summary-card">
+                <span className="label">Total income</span>
+                <strong>{formatMoney(monthIncomeTotal)}</strong>
+              </div>
+              <div className="summary-card">
+                <span className="label">Total expenses</span>
+                <strong>{formatMoney(monthExpenseTotal)}</strong>
+              </div>
+              <div className="summary-card">
+                <span className="label">Net</span>
+                <strong
+                  className={monthNet >= 0 ? "summary-value positive" : "summary-value negative"}
+                >
+                  {formatMoney(monthNet)}
+                </strong>
+              </div>
             </div>
             <div className="chart chart-wrapper">
               <ResponsiveContainer width="100%" height="100%">

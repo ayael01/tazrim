@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard.jsx";
 import BankDashboard from "./pages/BankDashboard.jsx";
@@ -15,6 +15,11 @@ import BankImportDetail from "./pages/BankImportDetail.jsx";
 import BankImportDraftReview from "./pages/BankImportDraftReview.jsx";
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isBank = location.pathname.startsWith("/bank");
+  const isCards = !isBank;
+
   return (
     <div className="app">
       <div className="background-orb orb-1" />
@@ -22,49 +27,78 @@ export default function App() {
       <div className="background-orb orb-3" />
 
       <header className="top-nav">
-        <div className="brand">
-          <div className="logo" aria-hidden="true">
-            <svg viewBox="0 0 64 64" role="img">
-              <defs>
-                <linearGradient id="logoGradient" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#ff8a4b" />
-                  <stop offset="100%" stopColor="#7b61ff" />
-                </linearGradient>
-              </defs>
-              <circle cx="32" cy="32" r="26" fill="url(#logoGradient)" />
-              <circle
-                cx="32"
-                cy="32"
-                r="18"
-                fill="none"
-                stroke="rgba(255,255,255,0.45)"
-                strokeWidth="2"
-              />
-              <text
-                x="32"
-                y="32"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                dy="2"
-                fontFamily="Space Grotesk, sans-serif"
-                fontSize="26"
-                fill="#fff"
-              >
-                ₪
-              </text>
-            </svg>
+        <div className="top-nav-row">
+          <div className="brand">
+            <div className="logo" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="img">
+                <defs>
+                  <linearGradient id="logoGradient" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#ff8a4b" />
+                    <stop offset="100%" stopColor="#7b61ff" />
+                  </linearGradient>
+                </defs>
+                <circle cx="32" cy="32" r="26" fill="url(#logoGradient)" />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="18"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.45)"
+                  strokeWidth="2"
+                />
+                <text
+                  x="32"
+                  y="32"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  dy="2"
+                  fontFamily="Space Grotesk, sans-serif"
+                  fontSize="26"
+                  fill="#fff"
+                >
+                  ₪
+                </text>
+              </svg>
+            </div>
+            <p className="eyebrow">Tazrim</p>
           </div>
-          <p className="eyebrow">Tazrim</p>
+          <nav className="domain-nav">
+            <button
+              type="button"
+              className={`nav-pill ${isBank ? "active" : ""}`}
+              onClick={() => navigate("/bank")}
+            >
+              Bank activities
+            </button>
+            <button
+              type="button"
+              className={`nav-pill ${isCards ? "active" : ""}`}
+              onClick={() => navigate("/")}
+            >
+              Credit cards
+            </button>
+          </nav>
         </div>
-        <nav>
-          <NavLink to="/" end>
-            Dashboard
-          </NavLink>
-          <NavLink to="/categories">Categories</NavLink>
-          <NavLink to="/merchants">Merchants</NavLink>
-          <NavLink to="/bank">Bank</NavLink>
-          <NavLink to="/bank/categories">Bank categories</NavLink>
-        </nav>
+        <div className="top-nav-row sub-nav">
+          <nav>
+            {isBank ? (
+              <>
+                <NavLink to="/bank" end>
+                  Dashboard
+                </NavLink>
+                <NavLink to="/bank/categories">Categories</NavLink>
+              </>
+            ) : (
+              <>
+                <NavLink to="/" end>
+                  Dashboard
+                </NavLink>
+                <NavLink to="/categories">Categories</NavLink>
+                <NavLink to="/merchants">Merchants</NavLink>
+              </>
+            )}
+          </nav>
+        </div>
       </header>
 
       <main className="content">

@@ -260,6 +260,22 @@ export default function BankCategoriesReport() {
     [incomeCategories]
   );
 
+  const yearIncomeTotal = useMemo(
+    () =>
+      incomeItems
+        .filter((item) => selectedIncomeCategories.has(item.name))
+        .reduce((sum, item) => sum + Number(item.total || 0), 0),
+    [incomeItems, selectedIncomeCategories]
+  );
+  const yearExpenseTotal = useMemo(
+    () =>
+      expenseItems
+        .filter((item) => selectedExpenseCategories.has(item.name))
+        .reduce((sum, item) => sum + Number(item.total || 0), 0),
+    [expenseItems, selectedExpenseCategories]
+  );
+  const yearNet = yearIncomeTotal - yearExpenseTotal;
+
   const maxIncomeRanks = useMemo(() => {
     return chartData.reduce((max, entry) => {
       let count = 0;
@@ -364,6 +380,22 @@ export default function BankCategoriesReport() {
         <div className="card-header">
           <h3>Income vs expense categories</h3>
           <p>Grouped bars with category composition</p>
+        </div>
+        <div className="summary summary-inline">
+          <div className="summary-card">
+            <span className="label">Total income</span>
+            <strong>{formatMoney(yearIncomeTotal)}</strong>
+          </div>
+          <div className="summary-card">
+            <span className="label">Total expenses</span>
+            <strong>{formatMoney(yearExpenseTotal)}</strong>
+          </div>
+          <div className="summary-card">
+            <span className="label">Net</span>
+            <strong className={yearNet >= 0 ? "summary-value positive" : "summary-value negative"}>
+              {formatMoney(yearNet)}
+            </strong>
+          </div>
         </div>
         <div className="chart chart-wrapper">
           <ResponsiveContainer width="100%" height="100%">

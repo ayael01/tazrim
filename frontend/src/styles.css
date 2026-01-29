@@ -35,8 +35,8 @@ body {
   top: 24px;
   z-index: 2;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 24px;
   padding: 12px 16px;
   margin-bottom: 32px;
@@ -47,24 +47,51 @@ body {
   box-shadow: 0 12px 30px rgba(28, 19, 54, 0.08);
 }
 
+.top-nav-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
 .top-nav nav {
   display: flex;
   gap: 16px;
   align-items: center;
 }
 
-.top-nav a {
+.top-nav a,
+.nav-pill {
   text-decoration: none;
   color: var(--muted);
   font-weight: 600;
   font-size: 14px;
   padding: 6px 12px;
   border-radius: 999px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 
-.top-nav a.active {
+.top-nav a.active,
+.nav-pill.active {
   color: var(--ink);
   background: rgba(255, 138, 75, 0.18);
+}
+
+.domain-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.domain-nav .nav-pill {
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.sub-nav nav {
+  gap: 12px;
 }
 
 .content {
@@ -189,6 +216,11 @@ h1 {
   gap: 16px;
 }
 
+.summary-inline {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 18px;
+}
+
 .summary-card {
   background: var(--surface);
   border-radius: 18px;
@@ -206,6 +238,14 @@ h1 {
 
 .summary-card strong {
   font-size: 20px;
+}
+
+.summary-value.positive {
+  color: #16a34a;
+}
+
+.summary-value.negative {
+  color: #dc2626;
 }
 
 .dashboard-grid {
@@ -809,11 +849,16 @@ h1 {
 
 @media (max-width: 900px) {
   .top-nav {
+    align-items: flex-start;
+  }
+
+  .top-nav-row {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .top-nav nav {
+  .top-nav nav,
+  .domain-nav {
     flex-wrap: wrap;
   }
 
