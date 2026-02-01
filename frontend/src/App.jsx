@@ -63,40 +63,37 @@ export default function App() {
             <p className="eyebrow">Tazrim</p>
           </div>
           <nav className="domain-nav">
-            <button
-              type="button"
-              className={`nav-pill ${isBank ? "active" : ""}`}
-              onClick={() => navigate("/bank")}
-            >
-              Bank activities
-            </button>
-            <button
-              type="button"
-              className={`nav-pill ${isCards ? "active" : ""}`}
-              onClick={() => navigate("/")}
-            >
-              Credit cards
-            </button>
-          </nav>
-        </div>
-        <div className="top-nav-row sub-nav">
-          <nav>
-            {isBank ? (
-              <>
+            <div className={`nav-group ${isBank ? "active" : ""}`}>
+              <button
+                type="button"
+                className={`nav-pill ${isBank ? "active" : ""}`}
+                onClick={() => navigate("/bank")}
+              >
+                Bank activities
+              </button>
+              <div className="nav-dropdown">
                 <NavLink to="/bank" end>
                   Dashboard
                 </NavLink>
                 <NavLink to="/bank/categories">Categories</NavLink>
-              </>
-            ) : (
-              <>
+              </div>
+            </div>
+            <div className={`nav-group ${isCards ? "active" : ""}`}>
+              <button
+                type="button"
+                className={`nav-pill ${isCards ? "active" : ""}`}
+                onClick={() => navigate("/")}
+              >
+                Credit cards
+              </button>
+              <div className="nav-dropdown">
                 <NavLink to="/" end>
                   Dashboard
                 </NavLink>
                 <NavLink to="/categories">Categories</NavLink>
                 <NavLink to="/merchants">Merchants</NavLink>
-              </>
-            )}
+              </div>
+            </div>
           </nav>
         </div>
       </header>

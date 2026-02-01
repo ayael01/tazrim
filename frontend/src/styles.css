@@ -79,9 +79,66 @@ body {
   background: rgba(255, 138, 75, 0.18);
 }
 
+.top-nav a:hover,
+.nav-pill:hover {
+  background: rgba(255, 138, 75, 0.12);
+  color: var(--ink);
+}
+
 .domain-nav {
   display: flex;
   gap: 10px;
+}
+
+.nav-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-group::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 12px;
+}
+
+.nav-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 170px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 28px rgba(28, 19, 54, 0.14);
+}
+
+.nav-dropdown a {
+  color: var(--ink);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 12px;
+}
+
+.nav-dropdown a:hover {
+  background: rgba(255, 138, 75, 0.12);
+}
+
+.nav-dropdown a.active {
+  background: rgba(255, 138, 75, 0.18);
+}
+
+.nav-group:hover .nav-dropdown,
+.nav-group:focus-within .nav-dropdown {
+  display: flex;
 }
 
 .domain-nav .nav-pill {
@@ -860,6 +917,15 @@ h1 {
   .top-nav nav,
   .domain-nav {
     flex-wrap: wrap;
+  }
+
+  .nav-dropdown {
+    position: static;
+    display: flex;
+    box-shadow: none;
+    padding: 6px 0 0;
+    background: transparent;
+    border: none;
   }
 
   .hero {
