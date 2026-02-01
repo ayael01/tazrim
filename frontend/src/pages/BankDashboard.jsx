@@ -28,6 +28,7 @@ function formatMoney(amount) {
 
 const now = new Date();
 const defaultYear = now.getFullYear();
+const latestActivityLimits = [10, 25, 50, 100];
 
 export default function BankDashboard() {
   const navigate = useNavigate();
@@ -40,10 +41,12 @@ export default function BankDashboard() {
   const [unknownPayees, setUnknownPayees] = useState([]);
   const [importBatches, setImportBatches] = useState([]);
   const [importDrafts, setImportDrafts] = useState([]);
+  const [latestLimitIndex, setLatestLimitIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const loadDashboard = async () => {
+    const latestLimit = latestActivityLimits[latestLimitIndex] || 10;
     try {
       setLoading(true);
       const [
@@ -57,7 +60,7 @@ export default function BankDashboard() {
       ] = await Promise.all([
         fetch(`${API_BASE}/bank/reports/summary?year=${year}`),
         fetch(`${API_BASE}/bank/reports/monthly-cashflow?year=${year}`),
-        fetch(`${API_BASE}/bank/activities?limit=10`),
+        fetch(`${API_BASE}/bank/activities?limit=${latestLimit}`),
         fetch(`${API_BASE}/bank/categories`),
         fetch(`${API_BASE}/bank/payees/unknown?limit=6`),
         fetch(`${API_BASE}/bank/imports?limit=5`),
@@ -122,7 +125,7 @@ export default function BankDashboard() {
 
   useEffect(() => {
     loadDashboard();
-  }, [year]);
+  }, [year, latestLimitIndex]);
 
   const monthLabels = useMemo(
     () =>
@@ -229,7 +232,7 @@ export default function BankDashboard() {
         <div className="card table-card">
           <div className="card-header">
             <h3>Latest activities</h3>
-            <p>Most recent 10 rows</p>
+            <p>Most recent {latestActivityLimits[latestLimitIndex]} rows</p>
           </div>
           <div className="table">
             <div className="table-row table-head">
@@ -251,6 +254,20 @@ export default function BankDashboard() {
               </div>
             ))}
           </div>
+          {latestLimitIndex < latestActivityLimits.length - 1 && (
+            <div className="load-more">
+              <button
+                className="ghost-button"
+                onClick={() =>
+                  setLatestLimitIndex((prev) =>
+                    Math.min(prev + 1, latestActivityLimits.length - 1)
+                  )
+                }
+              >
+                Show {latestActivityLimits[latestLimitIndex + 1]} rows
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
