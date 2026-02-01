@@ -15,6 +15,12 @@ import { formatMonthLabel, formatMonthTitle, parseMonthKey } from "../utils/bank
 
 const API_BASE = "http://localhost:8000";
 
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
 function formatMoney(value) {
   return new Intl.NumberFormat("en-IL", {
     style: "currency",
@@ -81,6 +87,10 @@ export default function BankMonthDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [initializedFilters, setInitializedFilters] = useState(false);
+  const [detailSelection, setDetailSelection] = useState(null);
+  const [detailActivities, setDetailActivities] = useState([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
 
   useEffect(() => {
     async function loadDetail() {
@@ -244,6 +254,39 @@ export default function BankMonthDetail() {
   const filteredExpenseCategories = monthExpenseCategories.filter((item) =>
     item.name.toLowerCase().includes(filter.trim().toLowerCase())
   );
+
+  function handleDetailSelect(directionKey, name) {
+    setDetailSelection({ direction: directionKey, name });
+    setDetailActivities([]);
+    setDetailError("");
+  }
+
+  useEffect(() => {
+    async function loadDetailActivities() {
+      if (!detailSelection || !year || !monthNumber) {
+        return;
+      }
+      try {
+        setDetailLoading(true);
+        const response = await fetch(
+          `${API_BASE}/bank/activities?year=${year}&month=${monthNumber}&direction=${detailSelection.direction}&category_name=${encodeURIComponent(
+            detailSelection.name
+          )}&limit=200`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to load activities");
+        }
+        const payload = await response.json();
+        setDetailActivities(payload.items ?? []);
+        setDetailError("");
+      } catch (err) {
+        setDetailError(err.message);
+      } finally {
+        setDetailLoading(false);
+      }
+    }
+    loadDetailActivities();
+  }, [detailSelection, monthNumber, year]);
 
   function toggleCategory(directionKey, name) {
     if (directionKey === "income") {
@@ -442,6 +485,17 @@ export default function BankMonthDetail() {
                         />
                         <span className="category-name">{item.name}</span>
                         <strong>{formatMoney(item.total)}</strong>
+                        <button
+                          type="button"
+                          className="ghost-button trend-button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleDetailSelect("expense", item.name);
+                          }}
+                        >
+                          Details
+                        </button>
                       </label>
                     </li>
                   ))}
@@ -480,6 +534,17 @@ export default function BankMonthDetail() {
                         />
                         <span className="category-name">{item.name}</span>
                         <strong>{formatMoney(item.total)}</strong>
+                        <button
+                          type="button"
+                          className="ghost-button trend-button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleDetailSelect("income", item.name);
+                          }}
+                        >
+                          Details
+                        </button>
                       </label>
                     </li>
                   ))}
@@ -488,6 +553,44 @@ export default function BankMonthDetail() {
             </div>
           </section>
         </>
+      )}
+
+      {detailSelection && (
+        <div className="modal-overlay" onClick={() => setDetailSelection(null)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="card-header">
+              <h3>
+                {detailSelection.name} · {detailSelection.direction}
+              </h3>
+              <button
+                className="ghost-button"
+                onClick={() => setDetailSelection(null)}
+              >
+                Close
+              </button>
+            </div>
+            {detailLoading && <span className="pill">Loading activities</span>}
+            {detailError && <span className="pill error">{detailError}</span>}
+            {!detailLoading && !detailError && (
+              <div className="detail-list">
+                {detailActivities.map((activity) => (
+                  <div className="detail-row" key={activity.id}>
+                    <span>
+                      {dateFormatter.format(new Date(activity.activity_date))} ·{" "}
+                      {activity.description}
+                    </span>
+                    <span className="amount">
+                      {formatMoney(activity.debit ?? activity.credit)}
+                    </span>
+                  </div>
+                ))}
+                {detailActivities.length === 0 && (
+                  <div className="empty-state">No activities for this category.</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
