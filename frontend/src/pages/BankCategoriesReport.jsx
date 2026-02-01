@@ -4,6 +4,8 @@ import {
   Bar,
   BarChart,
   Cell,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,6 +16,12 @@ import { getCategoryColor } from "../utils/bankColors.js";
 import { formatMonthLabel } from "../utils/bankDates.js";
 
 const API_BASE = "http://localhost:8000";
+
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
 
 function formatMoney(value) {
   return new Intl.NumberFormat("en-IL", {
@@ -96,6 +104,11 @@ export default function BankCategoriesReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [initializedFilters, setInitializedFilters] = useState(false);
+  const [trendSelection, setTrendSelection] = useState(null);
+  const [trendMonth, setTrendMonth] = useState(null);
+  const [trendActivities, setTrendActivities] = useState([]);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [trendError, setTrendError] = useState("");
 
   useEffect(() => {
     async function loadYears() {
@@ -251,6 +264,32 @@ export default function BankCategoriesReport() {
     });
   }, [cashflowItems, expenseItems, incomeItems, selectedExpenseCategories, selectedIncomeCategories]);
 
+  const trendMonths = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) =>
+        `${year}-${String(index + 1).padStart(2, "0")}`
+      ),
+    [year]
+  );
+
+  const trendSeries = useMemo(() => {
+    if (!trendSelection) {
+      return [];
+    }
+    const source = trendSelection.direction === "income" ? incomeItems : expenseItems;
+    const totals = new Map();
+    source
+      .filter((item) => item.name === trendSelection.name)
+      .forEach((item) => {
+        totals.set(item.month, Number(item.total || 0));
+      });
+    return trendMonths.map((month) => ({
+      month,
+      label: formatMonthLabel(month),
+      total: totals.get(month) || 0,
+    }));
+  }, [trendSelection, incomeItems, expenseItems, trendMonths]);
+
   const expenseNames = useMemo(
     () => expenseCategories.map((cat) => cat.name),
     [expenseCategories]
@@ -351,6 +390,45 @@ export default function BankCategoriesReport() {
       },
     });
   }
+
+  function handleTrendSelect(direction, name) {
+    setTrendSelection({ direction, name });
+    setTrendMonth(null);
+    setTrendActivities([]);
+    setTrendError("");
+  }
+
+  useEffect(() => {
+    async function loadTrendActivities() {
+      if (!trendSelection || !trendMonth) {
+        return;
+      }
+      const [, monthPart] = trendMonth.split("-");
+      const monthValue = Number(monthPart);
+      if (!monthValue) {
+        return;
+      }
+      try {
+        setTrendLoading(true);
+        const response = await fetch(
+          `${API_BASE}/bank/activities?year=${year}&month=${monthValue}&direction=${trendSelection.direction}&category_name=${encodeURIComponent(
+            trendSelection.name
+          )}&limit=200`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to load activities");
+        }
+        const payload = await response.json();
+        setTrendActivities(payload.items ?? []);
+        setTrendError("");
+      } catch (err) {
+        setTrendError(err.message);
+      } finally {
+        setTrendLoading(false);
+      }
+    }
+    loadTrendActivities();
+  }, [trendSelection, trendMonth, year]);
 
   return (
     <div className="report-page">
@@ -459,6 +537,45 @@ export default function BankCategoriesReport() {
 
       <section className="card report-card">
         <div className="card-header">
+          <h3>Category trend</h3>
+          <p>
+            {trendSelection
+              ? `${trendSelection.name} · ${trendSelection.direction}`
+              : "Select a category to see its monthly trend"}
+          </p>
+        </div>
+        {trendSelection ? (
+          <div className="chart">
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart
+                data={trendSeries}
+                onClick={(payload) => {
+                  const monthValue = payload?.activePayload?.[0]?.payload?.month;
+                  if (monthValue) {
+                    setTrendMonth(monthValue);
+                  }
+                }}
+              >
+                <XAxis dataKey="label" />
+                <YAxis hide />
+                <Tooltip formatter={(value) => formatMoney(value)} />
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  stroke={getCategoryColor(trendSelection.direction, trendSelection.name)}
+                  strokeWidth={3}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="empty-state">Pick an income or expense category below.</div>
+        )}
+      </section>
+
+      <section className="card report-card">
+        <div className="card-header">
           <h3>All categories</h3>
           <p>Filter what appears in the chart</p>
         </div>
@@ -504,6 +621,17 @@ export default function BankCategoriesReport() {
                     />
                     <span className="category-name">{item.name}</span>
                     <strong>{formatMoney(item.total)}</strong>
+                    <button
+                      type="button"
+                      className="ghost-button trend-button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleTrendSelect("expense", item.name);
+                      }}
+                    >
+                      Trend
+                    </button>
                   </label>
                 </li>
               ))}
@@ -542,6 +670,17 @@ export default function BankCategoriesReport() {
                     />
                     <span className="category-name">{item.name}</span>
                     <strong>{formatMoney(item.total)}</strong>
+                    <button
+                      type="button"
+                      className="ghost-button trend-button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleTrendSelect("income", item.name);
+                      }}
+                    >
+                      Trend
+                    </button>
                   </label>
                 </li>
               ))}
@@ -565,6 +704,41 @@ export default function BankCategoriesReport() {
         {loading && <span className="pill">Loading report</span>}
         {error && <span className="pill error">{error}</span>}
       </div>
+
+      {trendSelection && trendMonth && (
+        <div className="modal-overlay" onClick={() => setTrendMonth(null)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="card-header">
+              <h3>
+                {trendSelection.name} in {trendMonth}
+              </h3>
+              <button className="ghost-button" onClick={() => setTrendMonth(null)}>
+                Close
+              </button>
+            </div>
+            {trendLoading && <span className="pill">Loading activities</span>}
+            {trendError && <span className="pill error">{trendError}</span>}
+            {!trendLoading && !trendError && (
+              <div className="detail-list">
+                {trendActivities.map((activity) => (
+                  <div className="detail-row" key={activity.id}>
+                    <span>
+                      {dateFormatter.format(new Date(activity.activity_date))} ·{" "}
+                      {activity.description}
+                    </span>
+                    <span className="amount">
+                      {formatMoney(activity.debit ?? activity.credit)}
+                    </span>
+                  </div>
+                ))}
+                {trendActivities.length === 0 && (
+                  <div className="empty-state">No activities for this month.</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

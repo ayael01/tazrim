@@ -720,7 +720,7 @@ h1 {
 
 .category-item {
   display: grid;
-  grid-template-columns: auto 12px 1fr auto;
+  grid-template-columns: auto 12px 1fr auto auto;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
@@ -735,6 +735,11 @@ h1 {
 
 .category-item strong {
   font-variant-numeric: tabular-nums;
+}
+
+.trend-button {
+  padding: 4px 10px;
+  font-size: 12px;
 }
 
 .category-swatch {
