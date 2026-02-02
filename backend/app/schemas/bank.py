@@ -40,7 +40,12 @@ class BankActivityOut(BaseModel):
     balance: Optional[Decimal]
     currency: Optional[str]
     payee_name: Optional[str]
+    category_id: Optional[int]
     category_name: Optional[str]
+
+
+class BankActivityUpdate(BaseModel):
+    category_id: Optional[int] = None
 
 
 class BankActivityList(BaseModel):

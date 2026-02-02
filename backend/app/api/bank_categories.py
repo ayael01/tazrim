@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.db.models import (
     BankActivity,
@@ -34,8 +34,12 @@ def list_bank_categories(
         if direction == "income"
         else func.coalesce(BankActivity.debit, 0)
     )
+    manual_category = aliased(BankActivityCategory)
     category_name = func.coalesce(
-        BankActivity.raw_category_text, BankActivityCategory.name, "Uncategorized"
+        manual_category.name,
+        BankActivity.raw_category_text,
+        BankActivityCategory.name,
+        "Uncategorized",
     )
 
     query = (
@@ -51,6 +55,7 @@ def list_bank_categories(
             BankActivityCategory,
             BankPayeeCategoryMap.category_id == BankActivityCategory.id,
         )
+        .outerjoin(manual_category, BankActivity.manual_category_id == manual_category.id)
         .group_by(category_name)
         .order_by(func.sum(amount_expr).desc())
     )

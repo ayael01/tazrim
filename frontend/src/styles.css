@@ -753,6 +753,36 @@ h1 {
   font-weight: 600;
 }
 
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.filter-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.filter-grid input,
+.filter-grid select,
+.category-select {
+  border-radius: 12px;
+  border: 1px solid rgba(20, 19, 26, 0.15);
+  background: var(--surface);
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.category-select {
+  width: 100%;
+  max-width: 220px;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

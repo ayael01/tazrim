@@ -10,6 +10,7 @@ import MerchantDetail from "./pages/MerchantDetail.jsx";
 import ImportDetail from "./pages/ImportDetail.jsx";
 import MerchantMonthDetail from "./pages/MerchantMonthDetail.jsx";
 import BankCategoriesReport from "./pages/BankCategoriesReport.jsx";
+import BankActivities from "./pages/BankActivities.jsx";
 import BankMonthDetail from "./pages/BankMonthDetail.jsx";
 import BankImportDetail from "./pages/BankImportDetail.jsx";
 import BankImportDraftReview from "./pages/BankImportDraftReview.jsx";
@@ -75,6 +76,7 @@ export default function App() {
                 <NavLink to="/bank" end>
                   Dashboard
                 </NavLink>
+                <NavLink to="/bank/activities">Activities</NavLink>
                 <NavLink to="/bank/categories">Categories</NavLink>
               </div>
             </div>
@@ -102,6 +104,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/bank" element={<BankDashboard />} />
+          <Route path="/bank/activities" element={<BankActivities />} />
           <Route path="/bank/categories" element={<BankCategoriesReport />} />
           <Route path="/bank/month/:month" element={<BankMonthDetail />} />
           <Route path="/bank/imports/:importId" element={<BankImportDetail />} />

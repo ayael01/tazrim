@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.db.models import (
     BankActivity,
@@ -212,8 +212,12 @@ def _category_monthly_rows(
         if direction == "income"
         else func.coalesce(BankActivity.debit, 0)
     )
+    manual_category = aliased(BankActivityCategory)
     category_name = func.coalesce(
-        BankActivity.raw_category_text, BankActivityCategory.name, "Uncategorized"
+        manual_category.name,
+        BankActivity.raw_category_text,
+        BankActivityCategory.name,
+        "Uncategorized",
     )
     month_bucket = func.date_trunc("month", BankActivity.activity_date)
     month_label = func.to_char(month_bucket, "YYYY-MM")
@@ -252,6 +256,7 @@ def _category_monthly_rows(
             BankActivityCategory,
             BankPayeeCategoryMap.category_id == BankActivityCategory.id,
         )
+        .outerjoin(manual_category, BankActivity.manual_category_id == manual_category.id)
         .filter(func.extract("year", BankActivity.activity_date) == selected_year)
         .filter(amount_expr > 0)
     )
@@ -278,8 +283,12 @@ def category_month_detail(
         if direction == "income"
         else func.coalesce(BankActivity.debit, 0)
     )
+    manual_category = aliased(BankActivityCategory)
     category_name = func.coalesce(
-        BankActivity.raw_category_text, BankActivityCategory.name, "Uncategorized"
+        manual_category.name,
+        BankActivity.raw_category_text,
+        BankActivityCategory.name,
+        "Uncategorized",
     )
     payee_id = BankPayee.id
     payee_name = func.coalesce(BankPayee.display_name, BankActivity.payee_raw)
@@ -298,6 +307,7 @@ def category_month_detail(
             BankActivityCategory,
             BankPayeeCategoryMap.category_id == BankActivityCategory.id,
         )
+        .outerjoin(manual_category, BankActivity.manual_category_id == manual_category.id)
         .filter(BankActivity.activity_date >= month_start)
         .filter(BankActivity.activity_date < month_end)
         .filter(amount_expr > 0)

@@ -209,12 +209,18 @@ class BankActivity(Base):
     credit: Mapped[Optional[Numeric]] = mapped_column(Numeric(12, 2))
     balance: Mapped[Optional[Numeric]] = mapped_column(Numeric(12, 2))
     currency: Mapped[Optional[str]] = mapped_column(String(3))
+    manual_category_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("bank_activity_categories.id")
+    )
     raw_category_text: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     bank_account = relationship("BankAccount", back_populates="activities")
     import_batch = relationship("BankActivityImportBatch", back_populates="activities")
     payee = relationship("BankPayee", back_populates="activities")
+    manual_category = relationship(
+        "BankActivityCategory", foreign_keys=[manual_category_id]
+    )
 
 
 Index("ix_bank_activities_activity_date", BankActivity.activity_date)
