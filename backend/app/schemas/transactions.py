@@ -14,6 +14,8 @@ class TransactionOut(BaseModel):
     currency: str
     charged_amount: Optional[Decimal]
     charged_currency: Optional[str]
+    manual_category_id: Optional[int]
+    category_id: Optional[int]
     category_name: Optional[str]
 
 
@@ -27,6 +29,5 @@ class TransactionMonthList(BaseModel):
     items: list[TransactionOut]
 
 
-class TransactionList(BaseModel):
-    total: int
-    items: list[TransactionOut]
+class TransactionUpdate(BaseModel):
+    category_id: Optional[int] = None

@@ -14,6 +14,7 @@ import BankActivities from "./pages/BankActivities.jsx";
 import BankMonthDetail from "./pages/BankMonthDetail.jsx";
 import BankImportDetail from "./pages/BankImportDetail.jsx";
 import BankImportDraftReview from "./pages/BankImportDraftReview.jsx";
+import CardTransactions from "./pages/CardTransactions.jsx";
 
 export default function App() {
   const location = useLocation();
@@ -92,6 +93,7 @@ export default function App() {
                 <NavLink to="/" end>
                   Dashboard
                 </NavLink>
+                <NavLink to="/transactions">Transactions</NavLink>
                 <NavLink to="/categories">Categories</NavLink>
                 <NavLink to="/merchants">Merchants</NavLink>
               </div>
@@ -110,6 +112,7 @@ export default function App() {
           <Route path="/bank/imports/:importId" element={<BankImportDetail />} />
           <Route path="/bank/imports/drafts/:draftId" element={<BankImportDraftReview />} />
           <Route path="/categories" element={<CategoriesReport />} />
+          <Route path="/transactions" element={<CardTransactions />} />
           <Route path="/categories/month/:month" element={<CategoryMonthDetail />} />
           <Route path="/categories/:categoryId" element={<CategoryDetail />} />
           <Route path="/merchants" element={<MerchantsReport />} />

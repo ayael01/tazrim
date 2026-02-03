@@ -78,11 +78,13 @@ class Transaction(Base):
     transaction_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     charged_amount: Mapped[Optional[Numeric]] = mapped_column(Numeric(12, 2))
     charged_currency: Mapped[Optional[str]] = mapped_column(String(3))
+    manual_category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     card_account = relationship("CardAccount", back_populates="transactions")
     import_batch = relationship("ImportBatch", back_populates="transactions")
     merchant = relationship("Merchant", back_populates="transactions")
+    manual_category = relationship("Category", foreign_keys=[manual_category_id])
 
 
 Index("ix_transactions_transaction_date", Transaction.transaction_date)
