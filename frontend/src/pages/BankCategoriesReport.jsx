@@ -14,6 +14,15 @@ import {
 
 import { getCategoryColor } from "../utils/bankColors.js";
 import { formatMonthLabel } from "../utils/bankDates.js";
+import {
+  applyRule,
+  clearAllRule,
+  isCategoryChecked,
+  loadBankCategoryRules,
+  saveBankCategoryRules,
+  selectAllRule,
+  toggleRule,
+} from "../utils/bankFilters.js";
 
 const API_BASE = "http://localhost:8000";
 
@@ -74,14 +83,6 @@ function CategoryTooltip({ active, payload, label }) {
   );
 }
 
-function buildSelectionMap(categories, selected) {
-  const map = {};
-  categories.forEach((name) => {
-    map[name] = selected.has(name);
-  });
-  return map;
-}
-
 export default function BankCategoriesReport() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -95,15 +96,18 @@ export default function BankCategoriesReport() {
   const [incomeItems, setIncomeItems] = useState([]);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [incomeCategories, setIncomeCategories] = useState([]);
-  const [selectedExpenseCategories, setSelectedExpenseCategories] = useState(new Set());
-  const [selectedIncomeCategories, setSelectedIncomeCategories] = useState(new Set());
+  const [expenseRule, setExpenseRule] = useState(
+    () => loadBankCategoryRules().expense
+  );
+  const [incomeRule, setIncomeRule] = useState(
+    () => loadBankCategoryRules().income
+  );
   const [filter, setFilter] = useState("");
   const [listOffset, setListOffset] = useState(0);
   const [listLoading, setListLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [initializedFilters, setInitializedFilters] = useState(false);
   const [trendSelection, setTrendSelection] = useState(null);
   const [trendMonth, setTrendMonth] = useState(null);
   const [trendActivities, setTrendActivities] = useState([]);
@@ -167,7 +171,6 @@ export default function BankCategoriesReport() {
     setIncomeCategories([]);
     setListOffset(0);
     setHasMore(true);
-    setInitializedFilters(false);
   }, [year, filter]);
 
   useEffect(() => {
@@ -209,16 +212,26 @@ export default function BankCategoriesReport() {
   }, [year, filter, listOffset, hasMore]);
 
   useEffect(() => {
-    if (initializedFilters) {
-      return;
-    }
-    if (expenseCategories.length === 0 && incomeCategories.length === 0) {
-      return;
-    }
-    setSelectedExpenseCategories(new Set(expenseCategories.map((cat) => cat.name)));
-    setSelectedIncomeCategories(new Set(incomeCategories.map((cat) => cat.name)));
-    setInitializedFilters(true);
-  }, [expenseCategories, incomeCategories, initializedFilters]);
+    saveBankCategoryRules({ income: incomeRule, expense: expenseRule });
+  }, [incomeRule, expenseRule]);
+
+  const expenseAvailableNames = useMemo(
+    () => Array.from(new Set(expenseItems.map((item) => item.name))).sort(),
+    [expenseItems]
+  );
+  const incomeAvailableNames = useMemo(
+    () => Array.from(new Set(incomeItems.map((item) => item.name))).sort(),
+    [incomeItems]
+  );
+
+  const selectedExpenseCategories = useMemo(
+    () => applyRule(expenseRule, expenseAvailableNames),
+    [expenseRule, expenseAvailableNames]
+  );
+  const selectedIncomeCategories = useMemo(
+    () => applyRule(incomeRule, incomeAvailableNames),
+    [incomeRule, incomeAvailableNames]
+  );
 
   const chartData = useMemo(() => {
     const months = Array.from(new Set(cashflowItems.map((item) => item.month))).sort();
@@ -290,15 +303,6 @@ export default function BankCategoriesReport() {
     }));
   }, [trendSelection, incomeItems, expenseItems, trendMonths]);
 
-  const expenseNames = useMemo(
-    () => expenseCategories.map((cat) => cat.name),
-    [expenseCategories]
-  );
-  const incomeNames = useMemo(
-    () => incomeCategories.map((cat) => cat.name),
-    [incomeCategories]
-  );
-
   const yearIncomeTotal = useMemo(
     () =>
       incomeItems
@@ -335,46 +339,27 @@ export default function BankCategoriesReport() {
     }, 0);
   }, [chartData]);
 
-  const expenseSelectionMap = buildSelectionMap(expenseNames, selectedExpenseCategories);
-  const incomeSelectionMap = buildSelectionMap(incomeNames, selectedIncomeCategories);
-
   function toggleCategory(direction, name) {
     if (direction === "income") {
-      setSelectedIncomeCategories((prev) => {
-        const next = new Set(prev);
-        if (next.has(name)) {
-          next.delete(name);
-        } else {
-          next.add(name);
-        }
-        return next;
-      });
+      setIncomeRule((prev) => toggleRule(prev, name));
     } else {
-      setSelectedExpenseCategories((prev) => {
-        const next = new Set(prev);
-        if (next.has(name)) {
-          next.delete(name);
-        } else {
-          next.add(name);
-        }
-        return next;
-      });
+      setExpenseRule((prev) => toggleRule(prev, name));
     }
   }
 
   function selectAll(direction) {
     if (direction === "income") {
-      setSelectedIncomeCategories(new Set(incomeNames));
+      setIncomeRule(selectAllRule());
     } else {
-      setSelectedExpenseCategories(new Set(expenseNames));
+      setExpenseRule(selectAllRule());
     }
   }
 
   function clearAll(direction) {
     if (direction === "income") {
-      setSelectedIncomeCategories(new Set());
+      setIncomeRule(clearAllRule());
     } else {
-      setSelectedExpenseCategories(new Set());
+      setExpenseRule(clearAllRule());
     }
   }
 
@@ -383,12 +368,7 @@ export default function BankCategoriesReport() {
     if (!monthValue) {
       return;
     }
-    navigate(`/bank/month/${monthValue}?direction=${direction}&year=${year}`, {
-      state: {
-        income: Array.from(selectedIncomeCategories),
-        expense: Array.from(selectedExpenseCategories),
-      },
-    });
+    navigate(`/bank/month/${monthValue}?direction=${direction}&year=${year}`);
   }
 
   function handleTrendSelect(direction, name) {
@@ -612,7 +592,7 @@ export default function BankCategoriesReport() {
                   <label className="category-item">
                     <input
                       type="checkbox"
-                      checked={expenseSelectionMap[item.name] || false}
+                      checked={isCategoryChecked(expenseRule, item.name)}
                       onChange={() => toggleCategory("expense", item.name)}
                     />
                     <span
@@ -661,7 +641,7 @@ export default function BankCategoriesReport() {
                   <label className="category-item">
                     <input
                       type="checkbox"
-                      checked={incomeSelectionMap[item.name] || false}
+                      checked={isCategoryChecked(incomeRule, item.name)}
                       onChange={() => toggleCategory("income", item.name)}
                     />
                     <span

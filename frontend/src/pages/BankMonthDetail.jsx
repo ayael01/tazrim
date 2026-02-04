@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -12,6 +12,15 @@ import {
 
 import { getCategoryColor } from "../utils/bankColors.js";
 import { formatMonthLabel, formatMonthTitle, parseMonthKey } from "../utils/bankDates.js";
+import {
+  applyRule,
+  clearAllRule,
+  isCategoryChecked,
+  loadBankCategoryRules,
+  saveBankCategoryRules,
+  selectAllRule,
+  toggleRule,
+} from "../utils/bankFilters.js";
 
 const API_BASE = "http://localhost:8000";
 
@@ -76,17 +85,19 @@ export default function BankMonthDetail() {
   const { month } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const location = useLocation();
   const { year, month: monthNumber } = parseMonthKey(month);
   const direction = searchParams.get("direction") === "income" ? "income" : "expense";
   const [incomeItems, setIncomeItems] = useState([]);
   const [expenseItems, setExpenseItems] = useState([]);
-  const [selectedIncomeCategories, setSelectedIncomeCategories] = useState(new Set());
-  const [selectedExpenseCategories, setSelectedExpenseCategories] = useState(new Set());
+  const [expenseRule, setExpenseRule] = useState(
+    () => loadBankCategoryRules().expense
+  );
+  const [incomeRule, setIncomeRule] = useState(
+    () => loadBankCategoryRules().income
+  );
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [initializedFilters, setInitializedFilters] = useState(false);
   const [detailSelection, setDetailSelection] = useState(null);
   const [detailActivities, setDetailActivities] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -122,10 +133,7 @@ export default function BankMonthDetail() {
   }, [year, monthNumber]);
 
   useEffect(() => {
-    setSelectedIncomeCategories(new Set());
-    setSelectedExpenseCategories(new Set());
     setFilter("");
-    setInitializedFilters(false);
   }, [month]);
 
   const monthKey = month ? String(month) : "";
@@ -157,36 +165,25 @@ export default function BankMonthDetail() {
   }, [expenseItems, monthKey]);
 
   useEffect(() => {
-    if (initializedFilters) {
-      return;
-    }
-    if (monthIncomeCategories.length === 0 && monthExpenseCategories.length === 0) {
-      return;
-    }
-    const initialIncome = Array.isArray(location.state?.income)
-      ? location.state.income
-      : null;
-    const initialExpense = Array.isArray(location.state?.expense)
-      ? location.state.expense
-      : null;
-    const incomeFallback = monthIncomeCategories.map((cat) => cat.name);
-    const expenseFallback = monthExpenseCategories.map((cat) => cat.name);
-    const incomeSet = new Set(
-      (initialIncome && initialIncome.length ? initialIncome : incomeFallback).filter(
-        (name) => monthIncomeCategories.some((cat) => cat.name === name)
-      )
-    );
-    const expenseSet = new Set(
-      (initialExpense && initialExpense.length ? initialExpense : expenseFallback).filter(
-        (name) => monthExpenseCategories.some((cat) => cat.name === name)
-      )
-    );
-    setSelectedIncomeCategories(incomeSet.size ? incomeSet : new Set(incomeFallback));
-    setSelectedExpenseCategories(
-      expenseSet.size ? expenseSet : new Set(expenseFallback)
-    );
-    setInitializedFilters(true);
-  }, [monthIncomeCategories, monthExpenseCategories, initializedFilters, location.state]);
+    saveBankCategoryRules({ income: incomeRule, expense: expenseRule });
+  }, [incomeRule, expenseRule]);
+
+  const expenseAvailableNames = useMemo(
+    () => monthExpenseCategories.map((item) => item.name),
+    [monthExpenseCategories]
+  );
+  const incomeAvailableNames = useMemo(
+    () => monthIncomeCategories.map((item) => item.name),
+    [monthIncomeCategories]
+  );
+  const selectedExpenseCategories = useMemo(
+    () => applyRule(expenseRule, expenseAvailableNames),
+    [expenseRule, expenseAvailableNames]
+  );
+  const selectedIncomeCategories = useMemo(
+    () => applyRule(incomeRule, incomeAvailableNames),
+    [incomeRule, incomeAvailableNames]
+  );
 
   const chartData = useMemo(() => {
     const incomeStack = incomeItems
@@ -290,45 +287,25 @@ export default function BankMonthDetail() {
 
   function toggleCategory(directionKey, name) {
     if (directionKey === "income") {
-      setSelectedIncomeCategories((prev) => {
-        const next = new Set(prev);
-        if (next.has(name)) {
-          next.delete(name);
-        } else {
-          next.add(name);
-        }
-        return next;
-      });
+      setIncomeRule((prev) => toggleRule(prev, name));
     } else {
-      setSelectedExpenseCategories((prev) => {
-        const next = new Set(prev);
-        if (next.has(name)) {
-          next.delete(name);
-        } else {
-          next.add(name);
-        }
-        return next;
-      });
+      setExpenseRule((prev) => toggleRule(prev, name));
     }
   }
 
   function selectAll(directionKey) {
     if (directionKey === "income") {
-      setSelectedIncomeCategories(
-        new Set(monthIncomeCategories.map((item) => item.name))
-      );
+      setIncomeRule(selectAllRule());
     } else {
-      setSelectedExpenseCategories(
-        new Set(monthExpenseCategories.map((item) => item.name))
-      );
+      setExpenseRule(selectAllRule());
     }
   }
 
   function clearAll(directionKey) {
     if (directionKey === "income") {
-      setSelectedIncomeCategories(new Set());
+      setIncomeRule(clearAllRule());
     } else {
-      setSelectedExpenseCategories(new Set());
+      setExpenseRule(clearAllRule());
     }
   }
 
@@ -476,7 +453,7 @@ export default function BankMonthDetail() {
                       <label className="category-item">
                         <input
                           type="checkbox"
-                          checked={selectedExpenseCategories.has(item.name)}
+                          checked={isCategoryChecked(expenseRule, item.name)}
                           onChange={() => toggleCategory("expense", item.name)}
                         />
                         <span
@@ -525,7 +502,7 @@ export default function BankMonthDetail() {
                       <label className="category-item">
                         <input
                           type="checkbox"
-                          checked={selectedIncomeCategories.has(item.name)}
+                          checked={isCategoryChecked(incomeRule, item.name)}
                           onChange={() => toggleCategory("income", item.name)}
                         />
                         <span
