@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, extract
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, extract, func, or_
+from sqlalchemy.orm import Session, aliased
 
 from app.db.models import Category, Merchant, MerchantCategoryMap, Transaction
 from app.db.session import get_db
@@ -261,7 +261,12 @@ def category_month_detail(
     month_start = datetime(year, month, 1)
     month_end = datetime(year + (month == 12), 1 if month == 12 else month + 1, 1)
     amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
-    category_name = func.coalesce(Category.name, "Uncategorized")
+    manual_category = aliased(Category)
+    category_name = func.coalesce(
+        manual_category.name,
+        Category.name,
+        "Uncategorized",
+    )
     merchant_id = Merchant.id
     merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
 
@@ -276,6 +281,7 @@ def category_month_detail(
         .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
         .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
         .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
+        .outerjoin(manual_category, Transaction.manual_category_id == manual_category.id)
         .filter(Transaction.transaction_date >= month_start)
         .filter(Transaction.transaction_date < month_end)
         .group_by(category_name, merchant_id, merchant_name)
@@ -436,6 +442,12 @@ def category_month_merchants(
     month_start = datetime(year, month, 1)
     month_end = datetime(year + (month == 12), 1 if month == 12 else month + 1, 1)
     amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    manual_category = aliased(Category)
+    category_name = func.coalesce(
+        manual_category.name,
+        Category.name,
+        "Uncategorized",
+    )
     merchant_id = Merchant.id
     merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
 
@@ -449,19 +461,31 @@ def category_month_merchants(
         .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
         .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
         .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
+        .outerjoin(manual_category, Transaction.manual_category_id == manual_category.id)
         .filter(Transaction.transaction_date >= month_start)
         .filter(Transaction.transaction_date < month_end)
     )
 
     if uncategorized:
-        query = query.filter(MerchantCategoryMap.id.is_(None))
+        query = query.filter(
+            Transaction.manual_category_id.is_(None),
+            MerchantCategoryMap.id.is_(None),
+        )
         category_name = "Uncategorized"
         resolved_id = None
     else:
         category = db.query(Category).filter(Category.id == category_id).one_or_none()
         if not category:
             raise HTTPException(status_code=404, detail="Category not found")
-        query = query.filter(MerchantCategoryMap.category_id == category_id)
+        query = query.filter(
+            or_(
+                Transaction.manual_category_id == category_id,
+                and_(
+                    Transaction.manual_category_id.is_(None),
+                    MerchantCategoryMap.category_id == category_id,
+                ),
+            )
+        )
         category_name = category.name
         resolved_id = category.id
 
