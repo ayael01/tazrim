@@ -94,7 +94,17 @@ export default function CategoryMonthDetail() {
           <h1>Month details</h1>
           <p>Category → merchant breakdown for {data?.month ?? month}</p>
         </div>
-        <button className="ghost-button" onClick={() => navigate(-1)}>
+        <button
+          className="ghost-button"
+          onClick={() => {
+            const yearPart = Number(month?.split("-")?.[0]);
+            if (Number.isFinite(yearPart)) {
+              navigate("/categories", { state: { year: yearPart } });
+            } else {
+              navigate(-1);
+            }
+          }}
+        >
           Back to report
         </button>
       </header>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Line,
   LineChart,
@@ -11,6 +11,12 @@ import {
 } from "recharts";
 
 const API_BASE = "http://localhost:8000";
+const REPORT_YEAR_KEY = "reports:year";
+
+function readStoredYear() {
+  const stored = Number(window.sessionStorage.getItem(REPORT_YEAR_KEY));
+  return Number.isFinite(stored) ? stored : null;
+}
 
 const COLORS = [
   "#ff8a4b",
@@ -77,7 +83,18 @@ function SortedTooltip({ active, payload, totalByMonth, seriesCount }) {
 
 export default function MerchantsReport() {
   const navigate = useNavigate();
-  const [year, setYear] = useState(new Date().getFullYear());
+  const location = useLocation();
+  const [year, setYear] = useState(() => {
+    const stateYear = Number(location.state?.year);
+    const storedYear = readStoredYear();
+    if (Number.isFinite(stateYear)) {
+      return stateYear;
+    }
+    if (Number.isFinite(storedYear)) {
+      return storedYear;
+    }
+    return new Date().getFullYear();
+  });
   const [years, setYears] = useState([]);
   const [limit, setLimit] = useState(6);
   const [items, setItems] = useState([]);
@@ -105,6 +122,12 @@ export default function MerchantsReport() {
     }
     loadYears();
   }, []);
+
+  useEffect(() => {
+    if (Number.isFinite(year)) {
+      window.sessionStorage.setItem(REPORT_YEAR_KEY, String(year));
+    }
+  }, [year]);
 
   useEffect(() => {
     async function loadData() {
@@ -281,7 +304,10 @@ export default function MerchantsReport() {
         </div>
         <ul className="list selectable">
           {merchants.map((item) => (
-            <li key={item.id} onClick={() => navigate(`/merchants/${item.id}`)}>
+            <li
+              key={item.id}
+              onClick={() => navigate(`/merchants/${item.id}`, { state: { year } })}
+            >
               <span>{item.name}</span>
               <strong>{formatMoney(item.total)}</strong>
             </li>

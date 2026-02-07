@@ -91,7 +91,17 @@ export default function MerchantMonthDetail() {
           <h1>Merchants in {month}</h1>
           <p>Sorted by spend for the selected month</p>
         </div>
-        <button className="ghost-button" onClick={() => navigate(-1)}>
+        <button
+          className="ghost-button"
+          onClick={() => {
+            const yearPart = Number(month?.split("-")?.[0]);
+            if (Number.isFinite(yearPart)) {
+              navigate("/merchants", { state: { year: yearPart } });
+            } else {
+              navigate(-1);
+            }
+          }}
+        >
           Back to report
         </button>
       </header>

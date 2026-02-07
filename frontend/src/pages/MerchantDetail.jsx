@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Line,
   LineChart,
@@ -10,6 +10,12 @@ import {
 } from "recharts";
 
 const API_BASE = "http://localhost:8000";
+const REPORT_YEAR_KEY = "reports:year";
+
+function readStoredYear() {
+  const stored = Number(window.sessionStorage.getItem(REPORT_YEAR_KEY));
+  return Number.isFinite(stored) ? stored : null;
+}
 
 function formatMoney(value) {
   return new Intl.NumberFormat("en-IL", {
@@ -31,7 +37,18 @@ function toMonthLabel(value) {
 export default function MerchantDetail() {
   const { merchantId } = useParams();
   const navigate = useNavigate();
-  const [year, setYear] = useState(new Date().getFullYear());
+  const location = useLocation();
+  const [year, setYear] = useState(() => {
+    const stateYear = Number(location.state?.year);
+    const storedYear = readStoredYear();
+    if (Number.isFinite(stateYear)) {
+      return stateYear;
+    }
+    if (Number.isFinite(storedYear)) {
+      return storedYear;
+    }
+    return new Date().getFullYear();
+  });
   const [years, setYears] = useState([]);
   const [data, setData] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -55,6 +72,12 @@ export default function MerchantDetail() {
     }
     loadYears();
   }, []);
+
+  useEffect(() => {
+    if (Number.isFinite(year)) {
+      window.sessionStorage.setItem(REPORT_YEAR_KEY, String(year));
+    }
+  }, [year]);
 
   useEffect(() => {
     async function loadDetail() {
@@ -139,7 +162,10 @@ export default function MerchantDetail() {
             <span className="helper">Available: {years.join(", ")}</span>
           )}
         </div>
-        <button className="ghost-button" onClick={() => navigate(-1)}>
+        <button
+          className="ghost-button"
+          onClick={() => navigate("/merchants", { state: { year } })}
+        >
           Back to report
         </button>
       </header>
