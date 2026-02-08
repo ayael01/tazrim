@@ -667,6 +667,18 @@ h1 {
   padding-bottom: 18px;
 }
 
+.chart-wrapper .recharts-cartesian-axis-tick-value {
+  fill: rgba(20, 19, 26, 0.58);
+  font-size: 12px;
+}
+
+.bar-total-label {
+  fill: rgba(20, 19, 26, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 .series-picker {
   display: grid;
   gap: 6px;
@@ -988,5 +1000,9 @@ h1 {
 
   .amount {
     text-align: left;
+  }
+
+  .bar-total-label {
+    display: none;
   }
 }

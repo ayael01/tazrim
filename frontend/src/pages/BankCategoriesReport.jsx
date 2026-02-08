@@ -3,9 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
   Line,
   LineChart,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -40,6 +42,24 @@ function formatMoney(value) {
   }).format(Number(value || 0));
 }
 
+function formatMoneyDetailed(value) {
+  return new Intl.NumberFormat("en-IL", {
+    style: "currency",
+    currency: "ILS",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
+
+function formatMoneyCompact(value) {
+  return new Intl.NumberFormat("en-IL", {
+    style: "currency",
+    currency: "ILS",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0));
+}
+
 function formatAxis(value) {
   return new Intl.NumberFormat("en-IL", {
     notation: "compact",
@@ -63,7 +83,7 @@ function CategoryTooltip({ active, payload, label }) {
       <strong>{label}</strong>
       <div className="tooltip-total">
         <span>{direction === "income" ? "Income" : "Expenses"} total</span>
-        <span>{formatMoney(total)}</span>
+        <span>{formatMoneyDetailed(total)}</span>
       </div>
       <div className="tooltip-list">
         {safeRows.map((entry) => (
@@ -75,7 +95,7 @@ function CategoryTooltip({ active, payload, label }) {
               />
               {entry.name}
             </span>
-            <span>{formatMoney(entry.value)}</span>
+            <span>{formatMoneyDetailed(entry.value)}</span>
           </div>
         ))}
       </div>
@@ -260,6 +280,8 @@ export default function BankCategoriesReport() {
       const entry = {
         month,
         label: formatMonthLabel(month),
+        incomeTotal: incomeStack.reduce((sum, item) => sum + item.value, 0),
+        expenseTotal: expenseStack.reduce((sum, item) => sum + item.value, 0),
         incomeStack,
         expenseStack,
       };
@@ -317,6 +339,9 @@ export default function BankCategoriesReport() {
         .reduce((sum, item) => sum + Number(item.total || 0), 0),
     [expenseItems, selectedExpenseCategories]
   );
+  const activeMonthCount = chartData.length || 1;
+  const averageIncomeMonthly = yearIncomeTotal / activeMonthCount;
+  const averageExpenseMonthly = yearExpenseTotal / activeMonthCount;
   const yearNet = yearIncomeTotal - yearExpenseTotal;
 
   const maxIncomeRanks = useMemo(() => {
@@ -338,6 +363,31 @@ export default function BankCategoriesReport() {
       return Math.max(max, count);
     }, 0);
   }, [chartData]);
+
+  function renderStackTotalLabel(direction, rankIndex) {
+    return function StackTotalLabel(props) {
+      const { payload, value, x, y, width } = props;
+      if (!payload || !Number(value)) {
+        return null;
+      }
+      const nextRankValue = Number(payload[`${direction}_rank_${rankIndex + 1}`] || 0);
+      if (nextRankValue > 0) {
+        return null;
+      }
+      const total =
+        direction === "income" ? Number(payload.incomeTotal || 0) : Number(payload.expenseTotal || 0);
+      if (!total) {
+        return null;
+      }
+      const textX = Number(x || 0) + Number(width || 0) / 2;
+      const textY = Number(y || 0) - 8;
+      return (
+        <text x={textX} y={textY} textAnchor="middle" className="bar-total-label">
+          {formatMoneyCompact(total)}
+        </text>
+      );
+    };
+  }
 
   function toggleCategory(direction, name) {
     if (direction === "income") {
@@ -449,6 +499,14 @@ export default function BankCategoriesReport() {
             <strong>{formatMoney(yearExpenseTotal)}</strong>
           </div>
           <div className="summary-card">
+            <span className="label">Avg monthly income</span>
+            <strong>{formatMoney(averageIncomeMonthly)}</strong>
+          </div>
+          <div className="summary-card">
+            <span className="label">Avg monthly expenses</span>
+            <strong>{formatMoney(averageExpenseMonthly)}</strong>
+          </div>
+          <div className="summary-card">
             <span className="label">Net</span>
             <strong className={yearNet >= 0 ? "summary-value positive" : "summary-value negative"}>
               {formatMoney(yearNet)}
@@ -461,10 +519,17 @@ export default function BankCategoriesReport() {
               data={chartData}
               barCategoryGap={18}
               barGap={6}
-              margin={{ top: 16, right: 20, left: 0, bottom: 28 }}
+              margin={{ top: 32, right: 20, left: 0, bottom: 24 }}
             >
-              <XAxis dataKey="label" />
-              <YAxis tickFormatter={formatAxis} />
+              <CartesianGrid vertical={false} stroke="rgba(20, 19, 26, 0.12)" />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} />
+              <YAxis
+                tickFormatter={formatAxis}
+                axisLine={false}
+                tickLine={false}
+                width={52}
+                tickCount={5}
+              />
               <Tooltip shared={false} content={(props) => <CategoryTooltip {...props} />} />
               {Array.from({ length: maxIncomeRanks }, (_, index) => (
                 <Bar
@@ -486,6 +551,7 @@ export default function BankCategoriesReport() {
                       />
                     );
                   })}
+                  <LabelList content={renderStackTotalLabel("income", index)} />
                 </Bar>
               ))}
               {Array.from({ length: maxExpenseRanks }, (_, index) => (
@@ -508,6 +574,7 @@ export default function BankCategoriesReport() {
                       />
                     );
                   })}
+                  <LabelList content={renderStackTotalLabel("expense", index)} />
                 </Bar>
               ))}
             </BarChart>
