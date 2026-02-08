@@ -38,7 +38,7 @@ export default function MerchantDetail() {
   const { merchantId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [year, setYear] = useState(() => {
+  const initialReportYear = useMemo(() => {
     const stateYear = Number(location.state?.year);
     const storedYear = readStoredYear();
     if (Number.isFinite(stateYear)) {
@@ -48,7 +48,9 @@ export default function MerchantDetail() {
       return storedYear;
     }
     return new Date().getFullYear();
-  });
+  }, [location.state?.year]);
+  const [year, setYear] = useState(initialReportYear);
+  const [reportYear] = useState(initialReportYear);
   const [years, setYears] = useState([]);
   const [data, setData] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -164,7 +166,7 @@ export default function MerchantDetail() {
         </div>
         <button
           className="ghost-button"
-          onClick={() => navigate("/merchants", { state: { year } })}
+          onClick={() => navigate("/merchants", { state: { year: reportYear } })}
         >
           Back to report
         </button>

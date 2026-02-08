@@ -311,7 +311,8 @@ export default function CategoriesReport() {
               key={item.name}
               onClick={() =>
                 navigate(
-                  item.id ? `/categories/${item.id}` : "/categories/uncategorized"
+                  item.id ? `/categories/${item.id}` : "/categories/uncategorized",
+                  { state: { year } }
                 )
               }
             >

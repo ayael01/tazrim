@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Line,
   LineChart,
@@ -30,8 +30,14 @@ function toMonthLabel(value) {
 
 export default function CategoryDetail() {
   const { categoryId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const [year, setYear] = useState(new Date().getFullYear());
+  const initialReportYear = useMemo(() => {
+    const stateYear = Number(location.state?.year);
+    return Number.isFinite(stateYear) ? stateYear : new Date().getFullYear();
+  }, [location.state?.year]);
+  const [year, setYear] = useState(initialReportYear);
+  const [reportYear] = useState(initialReportYear);
   const [years, setYears] = useState([]);
   const [data, setData] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -156,7 +162,10 @@ export default function CategoryDetail() {
             <span className="helper">Available: {years.join(", ")}</span>
           )}
         </div>
-        <button className="ghost-button" onClick={() => navigate(-1)}>
+        <button
+          className="ghost-button"
+          onClick={() => navigate("/categories", { state: { year: reportYear } })}
+        >
           Back to report
         </button>
       </header>
