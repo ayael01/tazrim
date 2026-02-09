@@ -723,6 +723,15 @@ h1 {
   flex-wrap: wrap;
 }
 
+.detail-metrics {
+  margin-bottom: 14px;
+}
+
+.detail-metrics .summary-card strong {
+  font-size: 18px;
+  line-height: 1.3;
+}
+
 .bank-categories-header {
   display: grid;
   grid-template-columns: 1fr;

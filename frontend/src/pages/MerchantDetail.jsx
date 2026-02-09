@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -25,6 +27,15 @@ function formatMoney(value) {
   }).format(Number(value || 0));
 }
 
+function formatMoneyCompact(value) {
+  return new Intl.NumberFormat("en-IL", {
+    style: "currency",
+    currency: "ILS",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0));
+}
+
 function toMonthLabel(value) {
   if (!value) {
     return "";
@@ -32,6 +43,27 @@ function toMonthLabel(value) {
   const [year, month] = value.split("-");
   const date = new Date(Number(year), Number(month) - 1, 1);
   return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(date);
+}
+
+function TrendTooltip({ active, payload, label, average }) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+  const value = Number(payload[0]?.value || 0);
+  const diff = value - Number(average || 0);
+  return (
+    <div className="tooltip">
+      <strong>{label}</strong>
+      <div className="tooltip-total">
+        <span>Month spend</span>
+        <span>{formatMoney(value)}</span>
+      </div>
+      <div className="tooltip-row">
+        <span>Vs average</span>
+        <span>{`${diff >= 0 ? "+" : "-"}${formatMoney(Math.abs(diff))}`}</span>
+      </div>
+    </div>
+  );
 }
 
 export default function MerchantDetail() {
@@ -142,6 +174,27 @@ export default function MerchantDetail() {
     }));
   }, [data]);
 
+  const totalSpend = useMemo(
+    () => chartData.reduce((sum, item) => sum + Number(item.total || 0), 0),
+    [chartData]
+  );
+  const averageSpend = useMemo(
+    () => totalSpend / (chartData.length || 1),
+    [totalSpend, chartData.length]
+  );
+  const highestMonth = useMemo(() => {
+    if (!chartData.length) {
+      return null;
+    }
+    return chartData.reduce((max, item) => (item.total > max.total ? item : max), chartData[0]);
+  }, [chartData]);
+  const lowestMonth = useMemo(() => {
+    if (!chartData.length) {
+      return null;
+    }
+    return chartData.reduce((min, item) => (item.total < min.total ? item : min), chartData[0]);
+  }, [chartData]);
+
   return (
     <div className="report-page">
       <header className="page-header cards-report-header cards-detail-header">
@@ -179,6 +232,28 @@ export default function MerchantDetail() {
           <h3>Monthly spend</h3>
           <p>How this merchant trends through the year</p>
         </div>
+        <div className="summary summary-inline detail-metrics">
+          <div className="summary-card">
+            <span className="label">Total spent</span>
+            <strong>{formatMoney(totalSpend)}</strong>
+          </div>
+          <div className="summary-card">
+            <span className="label">Avg monthly spend</span>
+            <strong>{formatMoney(averageSpend)}</strong>
+          </div>
+          <div className="summary-card">
+            <span className="label">Highest month</span>
+            <strong>
+              {highestMonth ? `${toMonthLabel(highestMonth.month)} · ${formatMoney(highestMonth.total)}` : "--"}
+            </strong>
+          </div>
+          <div className="summary-card">
+            <span className="label">Lowest month</span>
+            <strong>
+              {lowestMonth ? `${toMonthLabel(lowestMonth.month)} · ${formatMoney(lowestMonth.total)}` : "--"}
+            </strong>
+          </div>
+        </div>
         <div className="chart">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart
@@ -190,15 +265,34 @@ export default function MerchantDetail() {
                 }
               }}
             >
+              <CartesianGrid vertical={false} stroke="rgba(20, 19, 26, 0.12)" />
               <XAxis dataKey="label" />
-              <YAxis hide />
-              <Tooltip formatter={(value) => formatMoney(value)} />
+              <YAxis
+                tickFormatter={formatMoneyCompact}
+                axisLine={false}
+                tickLine={false}
+                width={72}
+                tickCount={5}
+              />
+              <Tooltip content={<TrendTooltip average={averageSpend} />} />
+              <ReferenceLine
+                y={averageSpend}
+                stroke="#6a6775"
+                strokeDasharray="4 4"
+                label={{
+                  value: `Avg ${formatMoneyCompact(averageSpend)}`,
+                  position: "insideTopRight",
+                  fill: "#6a6775",
+                  fontSize: 12,
+                }}
+              />
               <Line
                 type="monotone"
                 dataKey="total"
                 stroke="#ff8a4b"
                 strokeWidth={3}
-                dot={false}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
               />
             </LineChart>
           </ResponsiveContainer>
