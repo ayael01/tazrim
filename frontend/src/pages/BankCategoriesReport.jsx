@@ -462,12 +462,12 @@ export default function BankCategoriesReport() {
 
   return (
     <div className="report-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header bank-categories-header">
+        <div className="bank-categories-header-main">
           <h1>Bank category report</h1>
           <p>Compare monthly income and expenses at a glance.</p>
         </div>
-        <div className="year-picker">
+        <div className="year-picker bank-year-picker">
           <label>
             Year
             <input

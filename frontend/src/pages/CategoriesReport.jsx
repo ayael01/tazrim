@@ -216,38 +216,40 @@ export default function CategoriesReport() {
 
   return (
     <div className="report-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header cards-report-header">
+        <div className="cards-report-header-main">
           <h1>Category report</h1>
           <p>Track how category spending spreads across the year.</p>
         </div>
-        <div className="year-picker">
-          <label>
-            Year
-            <input
-              type="number"
-              min="2020"
-              max="2100"
-              value={year}
-              onChange={(event) => setYear(Number(event.target.value))}
-            />
-          </label>
-          {years.length > 0 && (
-            <span className="helper">Available: {years.join(", ")}</span>
-          )}
-        </div>
-        <div className="series-picker">
-          <label>
-            Chart series
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={limit}
-              onChange={(event) => setLimit(Number(event.target.value))}
-            />
-          </label>
-          <span className="helper">Controls chart only</span>
+        <div className="cards-report-controls">
+          <div className="year-picker cards-year-picker">
+            <label>
+              Year
+              <input
+                type="number"
+                min="2020"
+                max="2100"
+                value={year}
+                onChange={(event) => setYear(Number(event.target.value))}
+              />
+            </label>
+            {years.length > 0 && (
+              <span className="helper">Available: {years.join(", ")}</span>
+            )}
+          </div>
+          <div className="series-picker cards-series-picker">
+            <label>
+              Chart series
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={limit}
+                onChange={(event) => setLimit(Number(event.target.value))}
+              />
+            </label>
+            <span className="helper">Controls chart only</span>
+          </div>
         </div>
       </header>
 

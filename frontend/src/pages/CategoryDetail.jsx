@@ -142,32 +142,34 @@ export default function CategoryDetail() {
 
   return (
     <div className="report-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header cards-report-header cards-detail-header">
+        <div className="cards-report-header-main">
           <h1>{data?.category_name || "Category detail"}</h1>
           <p>Monthly spend trend for {year}</p>
         </div>
-        <div className="year-picker">
-          <label>
-            Year
-            <input
-              type="number"
-              min="2020"
-              max="2100"
-              value={year}
-              onChange={(event) => setYear(Number(event.target.value))}
-            />
-          </label>
-          {years.length > 0 && (
-            <span className="helper">Available: {years.join(", ")}</span>
-          )}
+        <div className="cards-detail-controls">
+          <div className="year-picker cards-year-picker">
+            <label>
+              Year
+              <input
+                type="number"
+                min="2020"
+                max="2100"
+                value={year}
+                onChange={(event) => setYear(Number(event.target.value))}
+              />
+            </label>
+            {years.length > 0 && (
+              <span className="helper">Available: {years.join(", ")}</span>
+            )}
+          </div>
+          <button
+            className="ghost-button"
+            onClick={() => navigate("/categories", { state: { year: reportYear } })}
+          >
+            Back to report
+          </button>
         </div>
-        <button
-          className="ghost-button"
-          onClick={() => navigate("/categories", { state: { year: reportYear } })}
-        >
-          Back to report
-        </button>
       </header>
 
       <section className="card report-card">
