@@ -8,6 +8,7 @@ import {
   Line,
   LineChart,
   LabelList,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -98,6 +99,27 @@ function CategoryTooltip({ active, payload, label }) {
             <span>{formatMoneyDetailed(entry.value)}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function TrendTooltip({ active, payload, label, average }) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+  const value = Number(payload[0]?.value || 0);
+  const diff = value - Number(average || 0);
+  return (
+    <div className="tooltip">
+      <strong>{label}</strong>
+      <div className="tooltip-total">
+        <span>Month total</span>
+        <span>{formatMoneyDetailed(value)}</span>
+      </div>
+      <div className="tooltip-row">
+        <span>Vs average</span>
+        <span>{`${diff >= 0 ? "+" : "-"}${formatMoneyDetailed(Math.abs(diff))}`}</span>
       </div>
     </div>
   );
@@ -324,6 +346,37 @@ export default function BankCategoriesReport() {
       total: totals.get(month) || 0,
     }));
   }, [trendSelection, incomeItems, expenseItems, trendMonths]);
+
+  const trendActiveSeries = useMemo(
+    () => trendSeries.filter((item) => Number(item.total || 0) > 0),
+    [trendSeries]
+  );
+  const trendTotal = useMemo(
+    () => trendActiveSeries.reduce((sum, item) => sum + Number(item.total || 0), 0),
+    [trendActiveSeries]
+  );
+  const trendAverage = useMemo(
+    () => trendTotal / (trendActiveSeries.length || 1),
+    [trendTotal, trendActiveSeries.length]
+  );
+  const trendHighest = useMemo(() => {
+    if (!trendActiveSeries.length) {
+      return null;
+    }
+    return trendActiveSeries.reduce(
+      (max, item) => (item.total > max.total ? item : max),
+      trendActiveSeries[0]
+    );
+  }, [trendActiveSeries]);
+  const trendLowest = useMemo(() => {
+    if (!trendActiveSeries.length) {
+      return null;
+    }
+    return trendActiveSeries.reduce(
+      (min, item) => (item.total < min.total ? item : min),
+      trendActiveSeries[0]
+    );
+  }, [trendActiveSeries]);
 
   const yearIncomeTotal = useMemo(
     () =>
@@ -592,29 +645,72 @@ export default function BankCategoriesReport() {
           </p>
         </div>
         {trendSelection ? (
-          <div className="chart">
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart
-                data={trendSeries}
-                onClick={(payload) => {
-                  const monthValue = payload?.activePayload?.[0]?.payload?.month;
-                  if (monthValue) {
-                    setTrendMonth(monthValue);
-                  }
-                }}
-              >
-                <XAxis dataKey="label" />
-                <YAxis hide />
-                <Tooltip formatter={(value) => formatMoney(value)} />
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  stroke={getCategoryColor(trendSelection.direction, trendSelection.name)}
-                  strokeWidth={3}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div>
+            <div className="summary summary-inline detail-metrics">
+              <div className="summary-card">
+                <span className="label">Total</span>
+                <strong>{formatMoney(trendTotal)}</strong>
+              </div>
+              <div className="summary-card">
+                <span className="label">Average (active months)</span>
+                <strong>{formatMoney(trendAverage)}</strong>
+              </div>
+              <div className="summary-card">
+                <span className="label">Highest</span>
+                <strong>
+                  {trendHighest ? `${trendHighest.label} · ${formatMoney(trendHighest.total)}` : "--"}
+                </strong>
+              </div>
+              <div className="summary-card">
+                <span className="label">Lowest</span>
+                <strong>
+                  {trendLowest ? `${trendLowest.label} · ${formatMoney(trendLowest.total)}` : "--"}
+                </strong>
+              </div>
+            </div>
+            <div className="chart">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart
+                  data={trendSeries}
+                  onClick={(payload) => {
+                    const monthValue = payload?.activePayload?.[0]?.payload?.month;
+                    if (monthValue) {
+                      setTrendMonth(monthValue);
+                    }
+                  }}
+                >
+                  <XAxis dataKey="label" />
+                  <YAxis
+                    tickFormatter={formatMoneyCompact}
+                    axisLine={false}
+                    tickLine={false}
+                    width={72}
+                    tickCount={5}
+                  />
+                  <CartesianGrid vertical={false} stroke="rgba(20, 19, 26, 0.12)" />
+                  <Tooltip content={<TrendTooltip average={trendAverage} />} />
+                  <ReferenceLine
+                    y={trendAverage}
+                    stroke="#6a6775"
+                    strokeDasharray="4 4"
+                    label={{
+                      value: `Avg ${formatMoneyCompact(trendAverage)}`,
+                      position: "insideTopRight",
+                      fill: "#6a6775",
+                      fontSize: 12,
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke={getCategoryColor(trendSelection.direction, trendSelection.name)}
+                    strokeWidth={3}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         ) : (
           <div className="empty-state">Pick an income or expense category below.</div>
