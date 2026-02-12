@@ -586,6 +586,10 @@ h1 {
   font-size: 14px;
 }
 
+.transactions-table .table-row {
+  grid-template-columns: 130px 130px 1.5fr 1fr 130px 130px;
+}
+
 .table-row {
   display: grid;
   grid-template-columns: 140px 1.6fr 1fr 140px 140px;

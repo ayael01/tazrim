@@ -194,12 +194,14 @@ export default function CardTransactions() {
             Showing {transactions.length} of {total}
           </p>
         </div>
-        <div className="table">
+        <div className="table transactions-table">
           <div className="table-row table-head">
             <span>Date</span>
+            <span>Billed</span>
             <span>Merchant</span>
             <span>Category</span>
             <span className="amount">Amount</span>
+            <span className="amount">Charged</span>
           </div>
           {transactions.map((transaction) => {
             const value = transaction.manual_category_id
@@ -209,6 +211,11 @@ export default function CardTransactions() {
               <div className="table-row" key={transaction.id}>
                 <span>
                   {dateFormatter.format(new Date(transaction.transaction_date))}
+                </span>
+                <span>
+                  {transaction.posting_date
+                    ? dateFormatter.format(new Date(transaction.posting_date))
+                    : "--"}
                 </span>
                 <span className="merchant">{transaction.merchant_raw}</span>
                 <span className="category">
@@ -232,6 +239,11 @@ export default function CardTransactions() {
                 </span>
                 <span className="amount">
                   {formatMoney(transaction.amount, transaction.currency)}
+                </span>
+                <span className="amount">
+                  {transaction.charged_amount != null
+                    ? formatMoney(transaction.charged_amount, transaction.charged_currency)
+                    : "--"}
                 </span>
               </div>
             );
