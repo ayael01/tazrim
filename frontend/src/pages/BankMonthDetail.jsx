@@ -431,55 +431,6 @@ export default function BankMonthDetail() {
             <div className="two-column">
               <div>
                 <div className="category-header">
-                  <h4>Expenses</h4>
-                  <div className="category-actions">
-                    <button
-                      className="ghost-button small"
-                      onClick={() => selectAll("expense")}
-                    >
-                      Select all
-                    </button>
-                    <button
-                      className="ghost-button small"
-                      onClick={() => clearAll("expense")}
-                    >
-                      Clear all
-                    </button>
-                  </div>
-                </div>
-                <ul className="category-list">
-                  {filteredExpenseCategories.map((item) => (
-                    <li key={`expense-${item.name}`}>
-                      <label className="category-item">
-                        <input
-                          type="checkbox"
-                          checked={isCategoryChecked(expenseRule, item.name)}
-                          onChange={() => toggleCategory("expense", item.name)}
-                        />
-                        <span
-                          className="category-swatch"
-                          style={{ background: getCategoryColor("expense", item.name) }}
-                        />
-                        <span className="category-name">{item.name}</span>
-                        <strong>{formatMoney(item.total)}</strong>
-                        <button
-                          type="button"
-                          className="ghost-button trend-button"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleDetailSelect("expense", item.name);
-                          }}
-                        >
-                          Details
-                        </button>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <div className="category-header">
                   <h4>Income</h4>
                   <div className="category-actions">
                     <button
@@ -518,6 +469,55 @@ export default function BankMonthDetail() {
                             event.preventDefault();
                             event.stopPropagation();
                             handleDetailSelect("income", item.name);
+                          }}
+                        >
+                          Details
+                        </button>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <div className="category-header">
+                  <h4>Expenses</h4>
+                  <div className="category-actions">
+                    <button
+                      className="ghost-button small"
+                      onClick={() => selectAll("expense")}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      className="ghost-button small"
+                      onClick={() => clearAll("expense")}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                </div>
+                <ul className="category-list">
+                  {filteredExpenseCategories.map((item) => (
+                    <li key={`expense-${item.name}`}>
+                      <label className="category-item">
+                        <input
+                          type="checkbox"
+                          checked={isCategoryChecked(expenseRule, item.name)}
+                          onChange={() => toggleCategory("expense", item.name)}
+                        />
+                        <span
+                          className="category-swatch"
+                          style={{ background: getCategoryColor("expense", item.name) }}
+                        />
+                        <span className="category-name">{item.name}</span>
+                        <strong>{formatMoney(item.total)}</strong>
+                        <button
+                          type="button"
+                          className="ghost-button trend-button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleDetailSelect("expense", item.name);
                           }}
                         >
                           Details
