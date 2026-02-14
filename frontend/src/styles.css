@@ -508,6 +508,7 @@ h1 {
 
 .chart {
   height: 220px;
+  overflow-x: hidden;
 }
 
 .chart .recharts-wrapper,
@@ -643,6 +644,7 @@ h1 {
 .report-page {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 
 .page-header {
@@ -824,6 +826,7 @@ h1 {
 
 .report-card {
   padding: 24px;
+  min-width: 0;
 }
 
 .chart-wrapper {
@@ -985,6 +988,86 @@ h1 {
   margin: 0 0 8px;
   font-size: 16px;
   color: var(--ink);
+}
+
+.matrix-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.matrix-header-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.matrix-table-wrap {
+  margin-top: 10px;
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 420px;
+}
+
+.matrix-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.matrix-table th,
+.matrix-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(20, 19, 26, 0.08);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 130px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrix-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.matrix-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+}
+
+.matrix-table th:first-child,
+.matrix-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+  min-width: 88px;
+  max-width: 88px;
+}
+
+.matrix-table tfoot td:first-child {
+  z-index: 4;
 }
 
 .detail-list {

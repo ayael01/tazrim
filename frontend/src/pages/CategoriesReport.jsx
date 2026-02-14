@@ -110,6 +110,7 @@ export default function CategoriesReport() {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [matrixOpen, setMatrixOpen] = useState(false);
 
   useEffect(() => {
     async function loadYears() {
@@ -212,7 +213,63 @@ export default function CategoriesReport() {
     });
   }, [items]);
 
-  const series = Array.from(new Set(items.map((item) => item.name)));
+  const series = useMemo(() => {
+    const totals = new Map();
+    items.forEach((item) => {
+      totals.set(item.name, (totals.get(item.name) || 0) + Number(item.total || 0));
+    });
+    return Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
+  }, [items]);
+  const monthKeys = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) => {
+        const month = String(index + 1).padStart(2, "0");
+        return `${year}-${month}`;
+      }),
+    [year]
+  );
+
+  const matrixRows = useMemo(() => {
+    const valueMap = new Map();
+    items.forEach((item) => {
+      valueMap.set(`${item.month}::${item.name}`, Number(item.total || 0));
+    });
+
+    return monthKeys.map((month) => {
+      const values = {};
+      let total = 0;
+      series.forEach((name) => {
+        const key = `${month}::${name}`;
+        const amount = valueMap.get(key) || 0;
+        values[name] = amount;
+        total += amount;
+      });
+      return {
+        month,
+        label: toMonthLabel(month),
+        values,
+        total,
+      };
+    });
+  }, [items, monthKeys, series]);
+
+  const matrixColumnTotals = useMemo(() => {
+    const totals = {};
+    series.forEach((name) => {
+      totals[name] = matrixRows.reduce(
+        (sum, row) => sum + Number(row.values[name] || 0),
+        0
+      );
+    });
+    return totals;
+  }, [matrixRows, series]);
+
+  const matrixGrandTotal = useMemo(
+    () => matrixRows.reduce((sum, row) => sum + Number(row.total || 0), 0),
+    [matrixRows]
+  );
 
   return (
     <div className="report-page">
@@ -292,6 +349,58 @@ export default function CategoriesReport() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </section>
+
+      <section className="card report-card">
+        <div className="card-header">
+          <h3>Monthly category matrix</h3>
+          <div className="matrix-header-actions">
+            <p className="matrix-header-note">
+              Rows are months, columns are current chart categories
+            </p>
+            <button
+              className="ghost-button small"
+              onClick={() => setMatrixOpen((prev) => !prev)}
+            >
+              {matrixOpen ? "Hide matrix" : "Show matrix"}
+            </button>
+          </div>
+        </div>
+        {matrixOpen && (
+          <div className="matrix-table-wrap">
+            <table className="matrix-table">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  {series.map((name) => (
+                    <th key={`head-${name}`}>{name}</th>
+                  ))}
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matrixRows.map((row) => (
+                  <tr key={row.month}>
+                    <td>{row.label}</td>
+                    {series.map((name) => (
+                      <td key={`${row.month}-${name}`}>{formatMoney(row.values[name])}</td>
+                    ))}
+                    <td>{formatMoney(row.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total</td>
+                  {series.map((name) => (
+                    <td key={`total-${name}`}>{formatMoney(matrixColumnTotals[name])}</td>
+                  ))}
+                  <td>{formatMoney(matrixGrandTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="card report-card">
