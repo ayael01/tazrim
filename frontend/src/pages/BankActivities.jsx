@@ -15,6 +15,23 @@ const currencyFormatter = new Intl.NumberFormat("en-IL", {
   minimumFractionDigits: 0,
 });
 
+const EXPORT_COLUMNS = [
+  { key: "activity_date", label: "Activity date" },
+  { key: "value_date", label: "Value date" },
+  { key: "description", label: "Description" },
+  { key: "reference", label: "Reference" },
+  { key: "payee", label: "Payee" },
+  { key: "category", label: "Category" },
+  { key: "debit", label: "Debit" },
+  { key: "credit", label: "Credit" },
+  { key: "balance", label: "Balance" },
+  { key: "currency", label: "Currency" },
+  { key: "direction", label: "Direction" },
+  { key: "raw_category_text", label: "Raw category" },
+  { key: "manual_override", label: "Manual override" },
+  { key: "source_filename", label: "Source file" },
+];
+
 function formatMoney(value) {
   return currencyFormatter.format(Number(value || 0));
 }
@@ -34,6 +51,23 @@ export default function BankActivities() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const [exportOptions, setExportOptions] = useState({
+    scope: "filtered",
+    from: "",
+    to: "",
+    q: "",
+    categoryId: "",
+    direction: "",
+    filename: "",
+    includeSummary: true,
+    includeByCategory: true,
+    includeByPayee: true,
+    includeMonthlyTrend: true,
+    columns: EXPORT_COLUMNS.map((item) => item.key),
+  });
 
   const hasMore = activities.length < total;
 
@@ -127,6 +161,90 @@ export default function BankActivities() {
     }
   }
 
+  function openExportModal() {
+    setExportOptions((prev) => ({
+      ...prev,
+      scope: "filtered",
+      from: filters.from,
+      to: filters.to,
+      q: filters.q,
+      categoryId: filters.categoryId,
+      direction: filters.direction,
+      filename: "",
+    }));
+    setExportError("");
+    setExportOpen(true);
+  }
+
+  function toggleExportColumn(columnKey) {
+    setExportOptions((prev) => {
+      const hasColumn = prev.columns.includes(columnKey);
+      if (hasColumn) {
+        if (prev.columns.length === 1) {
+          return prev;
+        }
+        return {
+          ...prev,
+          columns: prev.columns.filter((key) => key !== columnKey),
+        };
+      }
+      return { ...prev, columns: [...prev.columns, columnKey] };
+    });
+  }
+
+  async function runExport() {
+    try {
+      setExporting(true);
+      setExportError("");
+      const payload = {
+        scope: exportOptions.scope,
+        date_from: exportOptions.scope === "filtered" ? exportOptions.from || null : null,
+        date_to: exportOptions.scope === "filtered" ? exportOptions.to || null : null,
+        q: exportOptions.scope === "filtered" ? exportOptions.q || null : null,
+        category_id:
+          exportOptions.scope === "filtered" && exportOptions.categoryId
+            ? Number(exportOptions.categoryId)
+            : null,
+        direction:
+          exportOptions.scope === "filtered" ? exportOptions.direction || null : null,
+        filename: exportOptions.filename || null,
+        include_summary: exportOptions.includeSummary,
+        include_by_category: exportOptions.includeByCategory,
+        include_by_payee: exportOptions.includeByPayee,
+        include_monthly_trend: exportOptions.includeMonthlyTrend,
+        columns: exportOptions.columns,
+      };
+
+      const response = await fetch(`${API_BASE}/bank/activities/export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to generate export");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] || "bank_activities_export.xlsx";
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setExportOpen(false);
+    } catch (err) {
+      setExportError(err.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="report-page">
       <header className="page-header">
@@ -134,6 +252,9 @@ export default function BankActivities() {
           <h1>Bank activities</h1>
           <p>Search, filter, and update categories across all activities.</p>
         </div>
+        <button className="ghost-button" onClick={openExportModal}>
+          Export Excel
+        </button>
       </header>
 
       <section className="card report-card">
@@ -270,6 +391,190 @@ export default function BankActivities() {
         {loading && <span className="pill">Loading activities</span>}
         {error && <span className="pill error">{error}</span>}
       </div>
+
+      {exportOpen && (
+        <div className="modal-overlay" onClick={() => setExportOpen(false)}>
+          <div className="modal-card export-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="card-header">
+              <h3>Export bank activities</h3>
+              <button className="ghost-button" onClick={() => setExportOpen(false)}>
+                Close
+              </button>
+            </div>
+            <div className="filter-grid export-grid">
+              <label>
+                Scope
+                <select
+                  value={exportOptions.scope}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({ ...prev, scope: event.target.value }))
+                  }
+                >
+                  <option value="filtered">Current filters</option>
+                  <option value="all">All activities</option>
+                </select>
+              </label>
+              <label>
+                Filename
+                <input
+                  type="text"
+                  placeholder="bank_activities_export.xlsx"
+                  value={exportOptions.filename}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({ ...prev, filename: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                From
+                <input
+                  type="date"
+                  value={exportOptions.from}
+                  disabled={exportOptions.scope === "all"}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({ ...prev, from: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                To
+                <input
+                  type="date"
+                  value={exportOptions.to}
+                  disabled={exportOptions.scope === "all"}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({ ...prev, to: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                Search
+                <input
+                  type="text"
+                  placeholder="Description, payee, reference"
+                  value={exportOptions.q}
+                  disabled={exportOptions.scope === "all"}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({ ...prev, q: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                Category
+                <select
+                  value={exportOptions.categoryId}
+                  disabled={exportOptions.scope === "all"}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({ ...prev, categoryId: event.target.value }))
+                  }
+                >
+                  <option value="">All categories</option>
+                  {categoryOptions.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Direction
+                <select
+                  value={exportOptions.direction}
+                  disabled={exportOptions.scope === "all"}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({ ...prev, direction: event.target.value }))
+                  }
+                >
+                  <option value="">All</option>
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="export-section">
+              <h4>Sheets</h4>
+              <label className="export-check">
+                <input
+                  type="checkbox"
+                  checked={exportOptions.includeSummary}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({
+                      ...prev,
+                      includeSummary: event.target.checked,
+                    }))
+                  }
+                />
+                Summary
+              </label>
+              <label className="export-check">
+                <input
+                  type="checkbox"
+                  checked={exportOptions.includeByCategory}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({
+                      ...prev,
+                      includeByCategory: event.target.checked,
+                    }))
+                  }
+                />
+                By category
+              </label>
+              <label className="export-check">
+                <input
+                  type="checkbox"
+                  checked={exportOptions.includeByPayee}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({
+                      ...prev,
+                      includeByPayee: event.target.checked,
+                    }))
+                  }
+                />
+                By payee
+              </label>
+              <label className="export-check">
+                <input
+                  type="checkbox"
+                  checked={exportOptions.includeMonthlyTrend}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({
+                      ...prev,
+                      includeMonthlyTrend: event.target.checked,
+                    }))
+                  }
+                />
+                Monthly trend
+              </label>
+            </div>
+
+            <div className="export-section">
+              <h4>Columns</h4>
+              <div className="export-columns">
+                {EXPORT_COLUMNS.map((column) => (
+                  <label className="export-check" key={column.key}>
+                    <input
+                      type="checkbox"
+                      checked={exportOptions.columns.includes(column.key)}
+                      onChange={() => toggleExportColumn(column.key)}
+                    />
+                    {column.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            {exportError && <span className="pill error">{exportError}</span>}
+            <div className="export-actions">
+              <button className="ghost-button" onClick={() => setExportOpen(false)}>
+                Cancel
+              </button>
+              <button className="ghost-button" disabled={exporting} onClick={runExport}>
+                {exporting ? "Generating..." : "Generate export"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -718,6 +718,48 @@ h1 {
   margin-top: 0;
 }
 
+.export-modal {
+  width: min(760px, 94vw);
+}
+
+.export-grid {
+  margin-top: 8px;
+}
+
+.export-section {
+  margin-top: 14px;
+}
+
+.export-section h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.export-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.export-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.export-check input {
+  accent-color: var(--accent);
+}
+
+.export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .cards-detail-controls {
   width: 100%;
   display: flex;
@@ -1146,6 +1188,14 @@ h1 {
 
   .cards-detail-controls .ghost-button {
     width: min(100%, 360px);
+  }
+
+  .export-actions {
+    flex-direction: column;
+  }
+
+  .export-actions .ghost-button {
+    width: 100%;
   }
 
   .cards-year-picker label {

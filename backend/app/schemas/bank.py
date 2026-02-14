@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -158,3 +158,33 @@ class BankCategoryMonthDetailResponse(BaseModel):
 
 class BankYearsResponse(BaseModel):
     years: List[int]
+
+
+class BankActivitiesExportRequest(BaseModel):
+    scope: Literal["filtered", "all"] = "filtered"
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+    q: Optional[str] = None
+    category_id: Optional[int] = None
+    direction: Optional[Literal["income", "expense"]] = None
+    filename: Optional[str] = None
+    include_summary: bool = True
+    include_by_category: bool = True
+    include_by_payee: bool = True
+    include_monthly_trend: bool = True
+    columns: List[str] = [
+        "activity_date",
+        "value_date",
+        "description",
+        "reference",
+        "payee",
+        "category",
+        "debit",
+        "credit",
+        "balance",
+        "currency",
+        "direction",
+        "raw_category_text",
+        "manual_override",
+        "source_filename",
+    ]
