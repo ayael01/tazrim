@@ -171,7 +171,7 @@ def monthly_trend(
 @router.get("/category-monthly", response_model=MonthlyBreakdownResponse)
 def category_monthly(
     year: Optional[int] = Query(None, ge=2000, le=2100),
-    limit: int = Query(8, ge=1, le=200),
+    limit: int = Query(8, ge=1, le=5000),
     db: Session = Depends(get_db),
 ) -> MonthlyBreakdownResponse:
     selected_year = _year_or_default(year)

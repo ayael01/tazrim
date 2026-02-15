@@ -102,6 +102,9 @@ export default function CategoriesReport() {
   const [years, setYears] = useState([]);
   const [limit, setLimit] = useState(6);
   const [items, setItems] = useState([]);
+  const [matrixItems, setMatrixItems] = useState([]);
+  const [matrixMode, setMatrixMode] = useState("all");
+  const [matrixTopLimit, setMatrixTopLimit] = useState(20);
   const [monthlyTotals, setMonthlyTotals] = useState({});
   const [categories, setCategories] = useState([]);
   const [filter, setFilter] = useState("");
@@ -169,6 +172,25 @@ export default function CategoriesReport() {
   }, [year, limit]);
 
   useEffect(() => {
+    async function loadMatrixData() {
+      const limitValue = matrixMode === "all" ? 5000 : Math.max(1, matrixTopLimit);
+      try {
+        const response = await fetch(
+          `${API_BASE}/reports/category-monthly?year=${year}&limit=${limitValue}`
+        );
+        if (!response.ok) {
+          return;
+        }
+        const payload = await response.json();
+        setMatrixItems(payload.items ?? []);
+      } catch (err) {
+        // ignore matrix fetch errors and keep previous data
+      }
+    }
+    loadMatrixData();
+  }, [year, matrixMode, matrixTopLimit]);
+
+  useEffect(() => {
     setCategories([]);
     setListOffset(0);
     setHasMore(true);
@@ -225,6 +247,16 @@ export default function CategoriesReport() {
       .sort((a, b) => b[1] - a[1])
       .map(([name]) => name);
   }, [items]);
+  const matrixSeries = useMemo(() => {
+    const totals = new Map();
+    matrixItems.forEach((item) => {
+      totals.set(item.name, (totals.get(item.name) || 0) + Number(item.total || 0));
+    });
+    return Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
+  }, [matrixItems]);
+
   const monthKeys = useMemo(
     () =>
       Array.from({ length: 12 }, (_, index) => {
@@ -236,14 +268,14 @@ export default function CategoriesReport() {
 
   const matrixRows = useMemo(() => {
     const valueMap = new Map();
-    items.forEach((item) => {
+    matrixItems.forEach((item) => {
       valueMap.set(`${item.month}::${item.name}`, Number(item.total || 0));
     });
 
     return monthKeys.map((month) => {
       const values = {};
       let total = 0;
-      series.forEach((name) => {
+      matrixSeries.forEach((name) => {
         const key = `${month}::${name}`;
         const amount = valueMap.get(key) || 0;
         values[name] = amount;
@@ -256,18 +288,18 @@ export default function CategoriesReport() {
         total,
       };
     });
-  }, [items, monthKeys, series]);
+  }, [matrixItems, monthKeys, matrixSeries]);
 
   const matrixColumnTotals = useMemo(() => {
     const totals = {};
-    series.forEach((name) => {
+    matrixSeries.forEach((name) => {
       totals[name] = matrixRows.reduce(
         (sum, row) => sum + Number(row.values[name] || 0),
         0
       );
     });
     return totals;
-  }, [matrixRows, series]);
+  }, [matrixRows, matrixSeries]);
 
   const matrixGrandTotal = useMemo(
     () => matrixRows.reduce((sum, row) => sum + Number(row.total || 0), 0),
@@ -278,7 +310,7 @@ export default function CategoriesReport() {
     if (matrixOpen) {
       setMatrixScrollHintDismissed(false);
     }
-  }, [matrixOpen, series.length, year]);
+  }, [matrixOpen, matrixSeries.length, year]);
 
   useEffect(() => {
     if (!matrixOpen) {
@@ -308,7 +340,7 @@ export default function CategoriesReport() {
       element.removeEventListener("scroll", updateCue);
       window.removeEventListener("resize", updateCue);
     };
-  }, [matrixOpen, matrixScrollHintDismissed, series.length, year]);
+  }, [matrixOpen, matrixScrollHintDismissed, matrixSeries.length, year]);
 
   return (
     <div className="report-page">
@@ -395,8 +427,33 @@ export default function CategoriesReport() {
           <h3>Monthly category matrix</h3>
           <div className="matrix-header-actions">
             <p className="matrix-header-note">
-              Rows are months, columns are current chart categories
+              Rows are months, columns are{" "}
+              {matrixMode === "all" ? "all categories" : `top ${matrixTopLimit} categories`}
             </p>
+            <label className="matrix-control">
+              Matrix columns
+              <select
+                value={matrixMode}
+                onChange={(event) => setMatrixMode(event.target.value)}
+              >
+                <option value="all">All categories</option>
+                <option value="top">Top N categories</option>
+              </select>
+            </label>
+            {matrixMode === "top" && (
+              <label className="matrix-control">
+                N
+                <input
+                  type="number"
+                  min="1"
+                  max="5000"
+                  value={matrixTopLimit}
+                  onChange={(event) =>
+                    setMatrixTopLimit(Number(event.target.value) || 1)
+                  }
+                />
+              </label>
+            )}
             <button
               className="ghost-button small"
               onClick={() => setMatrixOpen((prev) => !prev)}
@@ -419,7 +476,7 @@ export default function CategoriesReport() {
                 <thead>
                   <tr>
                     <th>Month</th>
-                    {series.map((name) => (
+                    {matrixSeries.map((name) => (
                       <th key={`head-${name}`}>{name}</th>
                     ))}
                     <th>Total</th>
@@ -429,7 +486,7 @@ export default function CategoriesReport() {
                   {matrixRows.map((row) => (
                     <tr key={row.month}>
                       <td>{row.label}</td>
-                      {series.map((name) => (
+                      {matrixSeries.map((name) => (
                         <td key={`${row.month}-${name}`}>{formatMoney(row.values[name])}</td>
                       ))}
                       <td>{formatMoney(row.total)}</td>
@@ -439,7 +496,7 @@ export default function CategoriesReport() {
                 <tfoot>
                   <tr>
                     <td>Total</td>
-                    {series.map((name) => (
+                    {matrixSeries.map((name) => (
                       <td key={`total-${name}`}>{formatMoney(matrixColumnTotals[name])}</td>
                     ))}
                     <td>{formatMoney(matrixGrandTotal)}</td>
