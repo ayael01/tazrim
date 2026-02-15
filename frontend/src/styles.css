@@ -1014,6 +1014,43 @@ h1 {
   max-height: 420px;
 }
 
+.matrix-shell {
+  position: relative;
+}
+
+.matrix-scroll-hint-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 8px;
+}
+
+.matrix-scroll-fade {
+  position: absolute;
+  top: 42px;
+  bottom: 0;
+  right: 0;
+  width: 64px;
+  pointer-events: none;
+  background: linear-gradient(
+    to left,
+    rgba(255, 255, 255, 0.96),
+    rgba(255, 255, 255, 0)
+  );
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+
+.matrix-scroll-hint {
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(20, 19, 26, 0.12);
+  pointer-events: none;
+}
+
 .matrix-table {
   width: max-content;
   min-width: 100%;
@@ -1291,5 +1328,9 @@ h1 {
 
   .bank-year-picker label {
     justify-content: center;
+  }
+
+  .matrix-scroll-hint {
+    display: none;
   }
 }

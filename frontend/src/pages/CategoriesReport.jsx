@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
@@ -111,6 +111,9 @@ export default function CategoriesReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [matrixOpen, setMatrixOpen] = useState(false);
+  const [showMatrixScrollCue, setShowMatrixScrollCue] = useState(false);
+  const [matrixScrollHintDismissed, setMatrixScrollHintDismissed] = useState(false);
+  const matrixWrapRef = useRef(null);
 
   useEffect(() => {
     async function loadYears() {
@@ -271,6 +274,42 @@ export default function CategoriesReport() {
     [matrixRows]
   );
 
+  useEffect(() => {
+    if (matrixOpen) {
+      setMatrixScrollHintDismissed(false);
+    }
+  }, [matrixOpen, series.length, year]);
+
+  useEffect(() => {
+    if (!matrixOpen) {
+      setShowMatrixScrollCue(false);
+      return;
+    }
+
+    const element = matrixWrapRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateCue = () => {
+      const maxScrollLeft = element.scrollWidth - element.clientWidth;
+      const hasOverflow = maxScrollLeft > 8;
+      const canScrollRight = hasOverflow && element.scrollLeft < maxScrollLeft - 8;
+      if (element.scrollLeft > 8) {
+        setMatrixScrollHintDismissed(true);
+      }
+      setShowMatrixScrollCue(canScrollRight && !matrixScrollHintDismissed);
+    };
+
+    updateCue();
+    element.addEventListener("scroll", updateCue, { passive: true });
+    window.addEventListener("resize", updateCue);
+    return () => {
+      element.removeEventListener("scroll", updateCue);
+      window.removeEventListener("resize", updateCue);
+    };
+  }, [matrixOpen, matrixScrollHintDismissed, series.length, year]);
+
   return (
     <div className="report-page">
       <header className="page-header cards-report-header">
@@ -367,38 +406,52 @@ export default function CategoriesReport() {
           </div>
         </div>
         {matrixOpen && (
-          <div className="matrix-table-wrap">
-            <table className="matrix-table">
-              <thead>
-                <tr>
-                  <th>Month</th>
-                  {series.map((name) => (
-                    <th key={`head-${name}`}>{name}</th>
-                  ))}
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {matrixRows.map((row) => (
-                  <tr key={row.month}>
-                    <td>{row.label}</td>
+          <div className="matrix-shell">
+            {showMatrixScrollCue && (
+              <div className="matrix-scroll-hint-row">
+                <div className="matrix-scroll-hint" aria-hidden="true">
+                  ← Scroll horizontally →
+                </div>
+              </div>
+            )}
+            <div ref={matrixWrapRef} className="matrix-table-wrap">
+              <table className="matrix-table">
+                <thead>
+                  <tr>
+                    <th>Month</th>
                     {series.map((name) => (
-                      <td key={`${row.month}-${name}`}>{formatMoney(row.values[name])}</td>
+                      <th key={`head-${name}`}>{name}</th>
                     ))}
-                    <td>{formatMoney(row.total)}</td>
+                    <th>Total</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td>Total</td>
-                  {series.map((name) => (
-                    <td key={`total-${name}`}>{formatMoney(matrixColumnTotals[name])}</td>
+                </thead>
+                <tbody>
+                  {matrixRows.map((row) => (
+                    <tr key={row.month}>
+                      <td>{row.label}</td>
+                      {series.map((name) => (
+                        <td key={`${row.month}-${name}`}>{formatMoney(row.values[name])}</td>
+                      ))}
+                      <td>{formatMoney(row.total)}</td>
+                    </tr>
                   ))}
-                  <td>{formatMoney(matrixGrandTotal)}</td>
-                </tr>
-              </tfoot>
-            </table>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>Total</td>
+                    {series.map((name) => (
+                      <td key={`total-${name}`}>{formatMoney(matrixColumnTotals[name])}</td>
+                    ))}
+                    <td>{formatMoney(matrixGrandTotal)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            {showMatrixScrollCue && (
+              <>
+                <div className="matrix-scroll-fade" aria-hidden="true" />
+              </>
+            )}
           </div>
         )}
       </section>
