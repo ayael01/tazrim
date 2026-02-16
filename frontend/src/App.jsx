@@ -15,6 +15,7 @@ import BankMonthDetail from "./pages/BankMonthDetail.jsx";
 import BankImportDetail from "./pages/BankImportDetail.jsx";
 import BankImportDraftReview from "./pages/BankImportDraftReview.jsx";
 import CardTransactions from "./pages/CardTransactions.jsx";
+import ProductVideo from "./pages/ProductVideo.jsx";
 
 export default function App() {
   const location = useLocation();
@@ -118,6 +119,7 @@ export default function App() {
           <Route path="/merchants" element={<MerchantsReport />} />
           <Route path="/merchants/:merchantId" element={<MerchantDetail />} />
           <Route path="/merchants/month/:month" element={<MerchantMonthDetail />} />
+          <Route path="/video" element={<ProductVideo />} />
           <Route path="/imports/:importId" element={<ImportDetail />} />
         </Routes>
       </main>

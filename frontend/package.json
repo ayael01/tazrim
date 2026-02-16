@@ -6,13 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "video:studio": "remotion studio remotion/index.jsx",
+    "video:render": "remotion render remotion/index.jsx TazrimProductDemo public/videos/tazrim-product-demo.mp4 --codec=h264"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.423",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "6.28.0",
-    "recharts": "2.12.7"
+    "recharts": "2.12.7",
+    "remotion": "^4.0.423"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "4.3.4",

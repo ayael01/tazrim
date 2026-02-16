@@ -173,6 +173,11 @@ export default function Dashboard() {
             Track family spending, upload new card statements, and explore
             category or merchant reports without manual spreadsheets.
           </p>
+          <div style={{ marginTop: 16 }}>
+            <button className="ghost-button" onClick={() => navigate("/video")}>
+              Watch product demo
+            </button>
+          </div>
           <div className="year-picker">
             <label>
               Year
