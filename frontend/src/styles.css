@@ -1003,28 +1003,6 @@ h1 {
   font-size: 13px;
 }
 
-.matrix-control {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.matrix-control select,
-.matrix-control input {
-  border-radius: 10px;
-  border: 1px solid rgba(20, 19, 26, 0.15);
-  background: var(--surface);
-  padding: 6px 10px;
-  font-size: 13px;
-  color: var(--ink);
-}
-
-.matrix-control input {
-  width: 90px;
-}
-
 .matrix-table-wrap {
   margin-top: 10px;
   border: 1px solid var(--stroke);

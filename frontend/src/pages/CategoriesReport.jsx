@@ -103,8 +103,6 @@ export default function CategoriesReport() {
   const [limit, setLimit] = useState(6);
   const [items, setItems] = useState([]);
   const [matrixItems, setMatrixItems] = useState([]);
-  const [matrixMode, setMatrixMode] = useState("all");
-  const [matrixTopLimit, setMatrixTopLimit] = useState(20);
   const [monthlyTotals, setMonthlyTotals] = useState({});
   const [categories, setCategories] = useState([]);
   const [filter, setFilter] = useState("");
@@ -173,10 +171,9 @@ export default function CategoriesReport() {
 
   useEffect(() => {
     async function loadMatrixData() {
-      const limitValue = matrixMode === "all" ? 5000 : Math.max(1, matrixTopLimit);
       try {
         const response = await fetch(
-          `${API_BASE}/reports/category-monthly?year=${year}&limit=${limitValue}`
+          `${API_BASE}/reports/category-monthly?year=${year}&limit=5000`
         );
         if (!response.ok) {
           return;
@@ -188,7 +185,7 @@ export default function CategoriesReport() {
       }
     }
     loadMatrixData();
-  }, [year, matrixMode, matrixTopLimit]);
+  }, [year]);
 
   useEffect(() => {
     setCategories([]);
@@ -426,34 +423,7 @@ export default function CategoriesReport() {
         <div className="card-header">
           <h3>Monthly category matrix</h3>
           <div className="matrix-header-actions">
-            <p className="matrix-header-note">
-              Rows are months, columns are{" "}
-              {matrixMode === "all" ? "all categories" : `top ${matrixTopLimit} categories`}
-            </p>
-            <label className="matrix-control">
-              Matrix columns
-              <select
-                value={matrixMode}
-                onChange={(event) => setMatrixMode(event.target.value)}
-              >
-                <option value="all">All categories</option>
-                <option value="top">Top N categories</option>
-              </select>
-            </label>
-            {matrixMode === "top" && (
-              <label className="matrix-control">
-                N
-                <input
-                  type="number"
-                  min="1"
-                  max="5000"
-                  value={matrixTopLimit}
-                  onChange={(event) =>
-                    setMatrixTopLimit(Number(event.target.value) || 1)
-                  }
-                />
-              </label>
-            )}
+            <p className="matrix-header-note">Rows are months, columns are all categories</p>
             <button
               className="ghost-button small"
               onClick={() => setMatrixOpen((prev) => !prev)}
