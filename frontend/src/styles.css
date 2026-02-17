@@ -48,6 +48,7 @@ body {
 }
 
 .top-nav-row {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -234,6 +235,38 @@ body {
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.brand-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.top-nav-center-demo {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.top-nav-center-demo:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.top-nav-center-demo.active {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .logo {
@@ -1293,6 +1326,12 @@ h1 {
   .top-nav-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .top-nav-center-demo {
+    position: static;
+    transform: none;
+    text-align: left;
   }
 
   .top-nav nav,

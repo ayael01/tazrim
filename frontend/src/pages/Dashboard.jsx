@@ -10,8 +10,6 @@ import {
   YAxis,
 } from "recharts";
 
-import { useNavigate } from "react-router-dom";
-
 import UploadCard from "../components/UploadCard.jsx";
 import UnknownMerchantsCard from "../components/UnknownMerchantsCard.jsx";
 import ImportHistoryCard from "../components/ImportHistoryCard.jsx";
@@ -51,7 +49,6 @@ const defaultYear = now.getFullYear();
 const latestTransactionLimits = [10, 25, 50, 100];
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const [year, setYear] = useState(defaultYear);
   const [years, setYears] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -168,16 +165,11 @@ export default function Dashboard() {
       <header className="hero">
         <div>
           <p className="eyebrow">Tazrim</p>
-          <h1>Welcome back.</h1>
+          <h1>Credit card overview.</h1>
           <p className="subtitle">
-            Track family spending, upload new card statements, and explore
-            category or merchant reports without manual spreadsheets.
+            Track card spending, upload monthly statements, and analyze
+            transactions by category or merchant.
           </p>
-          <div style={{ marginTop: 16 }}>
-            <button className="ghost-button" onClick={() => navigate("/video")}>
-              Watch product demo
-            </button>
-          </div>
           <div className="year-picker">
             <label>
               Year

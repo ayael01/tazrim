@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 const VIDEO_PATH = "/videos/tazrim-product-demo.mp4";
 
 export default function ProductVideo() {
-  const navigate = useNavigate();
   const [videoReady, setVideoReady] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
@@ -26,9 +24,6 @@ export default function ProductVideo() {
           <h1>Product video</h1>
           <p>Tazrim walkthrough and key user flows in one timeline.</p>
         </div>
-        <button className="ghost-button" onClick={() => navigate("/")}>
-          Back to main product
-        </button>
       </header>
 
       <section className="card report-card video-card">

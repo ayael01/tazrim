@@ -20,8 +20,9 @@ import ProductVideo from "./pages/ProductVideo.jsx";
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isVideo = location.pathname.startsWith("/video");
   const isBank = location.pathname.startsWith("/bank");
-  const isCards = !isBank;
+  const isCards = !isBank && !isVideo;
 
   return (
     <div className="app">
@@ -63,8 +64,17 @@ export default function App() {
                 </text>
               </svg>
             </div>
-            <p className="eyebrow">Tazrim</p>
+            <div className="brand-meta">
+              <p className="eyebrow">Tazrim</p>
+            </div>
           </div>
+          <button
+            type="button"
+            className={`top-nav-center-demo ${isVideo ? "active" : ""}`}
+            onClick={() => navigate("/video")}
+          >
+            Product demo
+          </button>
           <nav className="domain-nav">
             <div className={`nav-group ${isBank ? "active" : ""}`}>
               <button
