@@ -63,6 +63,7 @@ export default function CardTransactions() {
     filename: "",
     includeSummary: true,
     includeMonthlyTrend: true,
+    includeMonthlyCategoryMatrix: true,
     includeByCategory: true,
     includeByMerchant: true,
     includeBillingCycle: true,
@@ -206,6 +207,7 @@ export default function CardTransactions() {
         filename: exportOptions.filename || null,
         include_summary: exportOptions.includeSummary,
         include_monthly_trend: exportOptions.includeMonthlyTrend,
+        include_monthly_category_matrix: exportOptions.includeMonthlyCategoryMatrix,
         include_by_category: exportOptions.includeByCategory,
         include_by_merchant: exportOptions.includeByMerchant,
         include_billing_cycle: exportOptions.includeBillingCycle,
@@ -520,6 +522,19 @@ export default function CardTransactions() {
                   }
                 />
                 Monthly trend
+              </label>
+              <label className="export-check">
+                <input
+                  type="checkbox"
+                  checked={exportOptions.includeMonthlyCategoryMatrix}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({
+                      ...prev,
+                      includeMonthlyCategoryMatrix: event.target.checked,
+                    }))
+                  }
+                />
+                Monthly category matrix
               </label>
               <label className="export-check">
                 <input

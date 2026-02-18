@@ -43,6 +43,7 @@ class TransactionsExportRequest(BaseModel):
     filename: Optional[str] = None
     include_summary: bool = True
     include_monthly_trend: bool = True
+    include_monthly_category_matrix: bool = True
     include_by_category: bool = True
     include_by_merchant: bool = True
     include_billing_cycle: bool = True

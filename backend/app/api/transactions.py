@@ -316,6 +316,7 @@ def export_transactions(
     category_totals = defaultdict(lambda: {"count": 0, "amount": Decimal("0")})
     merchant_totals = defaultdict(lambda: {"count": 0, "amount": Decimal("0")})
     billing_cycle_totals = defaultdict(lambda: {"count": 0, "amount": Decimal("0")})
+    month_category_totals = defaultdict(lambda: defaultdict(lambda: Decimal("0")))
 
     for record in records:
         amount = record["effective_amount"] or Decimal("0")
@@ -324,6 +325,7 @@ def export_transactions(
         monthly_totals[month_key]["amount"] += amount
         category_totals[record["category"]]["count"] += 1
         category_totals[record["category"]]["amount"] += amount
+        month_category_totals[month_key][record["category"]] += amount
         merchant_totals[record["merchant_display"]]["count"] += 1
         merchant_totals[record["merchant_display"]]["amount"] += amount
         billing_key = record["billed_month"] or "Unbilled"
@@ -384,6 +386,59 @@ def export_transactions(
         trend_sheet.column_dimensions["B"].width = 14
         trend_sheet.column_dimensions["C"].width = 16
         trend_sheet.column_dimensions["D"].width = 24
+
+    if payload.include_monthly_category_matrix:
+        matrix_sheet = workbook.create_sheet("Monthly Category Matrix")
+        month_keys = sorted(monthly_totals.keys())
+        category_names = [
+            name
+            for name, _bucket in sorted(
+                category_totals.items(),
+                key=lambda item: item[1]["amount"],
+                reverse=True,
+            )
+        ]
+
+        headers = ["Month", *category_names, "TOTAL"]
+        for column, header in enumerate(headers, start=1):
+            header_cell = matrix_sheet.cell(row=1, column=column, value=header)
+            header_cell.font = Font(bold=True)
+            if column == 1:
+                matrix_sheet.column_dimensions[get_column_letter(column)].width = 12
+            elif column == len(headers):
+                matrix_sheet.column_dimensions[get_column_letter(column)].width = 16
+            else:
+                matrix_sheet.column_dimensions[get_column_letter(column)].width = min(
+                    max(len(str(header)) + 6, 14),
+                    30,
+                )
+
+        matrix_sheet.freeze_panes = "B2"
+        matrix_sheet.auto_filter.ref = f"A1:{get_column_letter(len(headers))}1"
+
+        for row_number, month_key in enumerate(month_keys, start=2):
+            matrix_sheet.cell(row=row_number, column=1, value=month_key)
+            row_total = Decimal("0")
+            for category_index, category_name in enumerate(category_names, start=2):
+                amount = month_category_totals[month_key].get(category_name, Decimal("0"))
+                matrix_sheet.cell(row=row_number, column=category_index, value=amount).number_format = "#,##0.00"
+                row_total += amount
+            matrix_sheet.cell(row=row_number, column=len(headers), value=row_total).number_format = "#,##0.00"
+
+        total_row = len(month_keys) + 2
+        total_label_cell = matrix_sheet.cell(row=total_row, column=1, value="Total")
+        total_label_cell.font = Font(bold=True)
+        for category_index, category_name in enumerate(category_names, start=2):
+            total_cell = matrix_sheet.cell(
+                row=total_row,
+                column=category_index,
+                value=category_totals[category_name]["amount"],
+            )
+            total_cell.font = Font(bold=True)
+            total_cell.number_format = "#,##0.00"
+        grand_total_cell = matrix_sheet.cell(row=total_row, column=len(headers), value=grand_total)
+        grand_total_cell.font = Font(bold=True)
+        grand_total_cell.number_format = "#,##0.00"
 
     if payload.include_by_category:
         category_sheet = workbook.create_sheet("By Category")
