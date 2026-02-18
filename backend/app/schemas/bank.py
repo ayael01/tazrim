@@ -172,6 +172,7 @@ class BankActivitiesExportRequest(BaseModel):
     include_by_category: bool = True
     include_by_payee: bool = True
     include_monthly_trend: bool = True
+    include_monthly_category_matrix: bool = True
     columns: List[str] = [
         "activity_date",
         "value_date",

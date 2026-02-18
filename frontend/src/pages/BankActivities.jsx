@@ -66,6 +66,7 @@ export default function BankActivities() {
     includeByCategory: true,
     includeByPayee: true,
     includeMonthlyTrend: true,
+    includeMonthlyCategoryMatrix: true,
     columns: EXPORT_COLUMNS.map((item) => item.key),
   });
 
@@ -212,6 +213,7 @@ export default function BankActivities() {
         include_by_category: exportOptions.includeByCategory,
         include_by_payee: exportOptions.includeByPayee,
         include_monthly_trend: exportOptions.includeMonthlyTrend,
+        include_monthly_category_matrix: exportOptions.includeMonthlyCategoryMatrix,
         columns: exportOptions.columns,
       };
 
@@ -545,6 +547,19 @@ export default function BankActivities() {
                   }
                 />
                 Monthly trend
+              </label>
+              <label className="export-check">
+                <input
+                  type="checkbox"
+                  checked={exportOptions.includeMonthlyCategoryMatrix}
+                  onChange={(event) =>
+                    setExportOptions((prev) => ({
+                      ...prev,
+                      includeMonthlyCategoryMatrix: event.target.checked,
+                    }))
+                  }
+                />
+                Monthly category matrix
               </label>
             </div>
 
