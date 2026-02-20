@@ -9,6 +9,7 @@ import CategoryDetail from "./pages/CategoryDetail.jsx";
 import MerchantDetail from "./pages/MerchantDetail.jsx";
 import ImportDetail from "./pages/ImportDetail.jsx";
 import MerchantMonthDetail from "./pages/MerchantMonthDetail.jsx";
+import MerchantInsights from "./pages/MerchantInsights.jsx";
 import BankCategoriesReport from "./pages/BankCategoriesReport.jsx";
 import BankActivities from "./pages/BankActivities.jsx";
 import BankMonthDetail from "./pages/BankMonthDetail.jsx";
@@ -107,6 +108,7 @@ export default function App() {
                 <NavLink to="/transactions">Transactions</NavLink>
                 <NavLink to="/categories">Categories</NavLink>
                 <NavLink to="/merchants">Merchants</NavLink>
+                <NavLink to="/merchants/insights">Insights</NavLink>
               </div>
             </div>
           </nav>
@@ -127,6 +129,7 @@ export default function App() {
           <Route path="/categories/month/:month" element={<CategoryMonthDetail />} />
           <Route path="/categories/:categoryId" element={<CategoryDetail />} />
           <Route path="/merchants" element={<MerchantsReport />} />
+          <Route path="/merchants/insights" element={<MerchantInsights />} />
           <Route path="/merchants/:merchantId" element={<MerchantDetail />} />
           <Route path="/merchants/month/:month" element={<MerchantMonthDetail />} />
           <Route path="/video" element={<ProductVideo />} />

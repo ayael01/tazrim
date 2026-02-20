@@ -624,6 +624,10 @@ h1 {
   grid-template-columns: 130px 130px 1.5fr 1fr 130px 130px;
 }
 
+.insights-table .table-row {
+  grid-template-columns: 1.8fr 150px 90px 140px 120px 120px;
+}
+
 .table-row {
   display: grid;
   grid-template-columns: 140px 1.6fr 1fr 140px 140px;
@@ -649,6 +653,10 @@ h1 {
 .table-row:not(.table-head):hover {
   border-color: rgba(255, 138, 75, 0.3);
   background: #fff4eb;
+}
+
+.clickable-row {
+  cursor: pointer;
 }
 
 .merchant {

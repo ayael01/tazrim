@@ -13,6 +13,8 @@ from app.schemas.reports import (
     CategoryMonthDetailResponse,
     CategoryDetailResponse,
     CategoryMonthMerchantsResponse,
+    MerchantInsightItem,
+    MerchantInsightsResponse,
     MerchantTotal,
     MerchantSpend,
     MerchantDetailResponse,
@@ -250,6 +252,110 @@ def merchant_monthly(
         year=selected_year,
         items=[MonthlyBreakdownItem(month=row.month, name=row.name, total=row.total) for row in rows],
     )
+
+
+@router.get("/merchant-insights", response_model=MerchantInsightsResponse)
+def merchant_insights(
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    min_bills: Optional[int] = Query(None, ge=0, le=12),
+    max_bills: Optional[int] = Query(None, ge=0, le=12),
+    min_total: Optional[float] = Query(None, ge=0),
+    max_total: Optional[float] = Query(None, ge=0),
+    category_id: Optional[int] = Query(None, ge=1),
+    q: Optional[str] = Query(None, min_length=1),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+) -> MerchantInsightsResponse:
+    selected_year = _year_or_default(year)
+    amount_expr = func.coalesce(Transaction.charged_amount, Transaction.transaction_amount)
+    merchant_name = func.coalesce(Merchant.display_name, Transaction.merchant_raw)
+    billed_month = func.date_trunc(
+        "month",
+        func.coalesce(Transaction.posting_date, Transaction.transaction_date),
+    )
+    bills_count_expr = func.count(func.distinct(billed_month))
+    total_expr = func.sum(amount_expr)
+    first_bill_expr = func.min(billed_month)
+    last_bill_expr = func.max(billed_month)
+    manual_category = aliased(Category)
+
+    query = (
+        db.query(
+            Merchant.id.label("merchant_id"),
+            merchant_name.label("merchant_name"),
+            total_expr.label("total_spend"),
+            bills_count_expr.label("bills_count"),
+            first_bill_expr.label("first_bill"),
+            last_bill_expr.label("last_bill"),
+        )
+        .select_from(Transaction)
+        .outerjoin(Merchant, Transaction.merchant_id == Merchant.id)
+        .outerjoin(MerchantCategoryMap, Merchant.id == MerchantCategoryMap.merchant_id)
+        .outerjoin(Category, MerchantCategoryMap.category_id == Category.id)
+        .outerjoin(manual_category, Transaction.manual_category_id == manual_category.id)
+        .filter(extract("year", Transaction.transaction_date) == selected_year)
+        .group_by(Merchant.id, merchant_name)
+    )
+
+    if min_bills is not None:
+        query = query.having(bills_count_expr >= min_bills)
+    if max_bills is not None:
+        query = query.having(bills_count_expr <= max_bills)
+    if min_total is not None:
+        query = query.having(total_expr >= min_total)
+    if max_total is not None:
+        query = query.having(total_expr <= max_total)
+    if category_id:
+        query = query.filter(
+            or_(
+                Transaction.manual_category_id == category_id,
+                and_(
+                    Transaction.manual_category_id.is_(None),
+                    MerchantCategoryMap.category_id == category_id,
+                ),
+            )
+        )
+    if q:
+        query = query.filter(
+            or_(
+                merchant_name.ilike(f"%{q}%"),
+                Transaction.merchant_raw.ilike(f"%{q}%"),
+            )
+        )
+
+    totals_subquery = query.order_by(None).subquery()
+    total = db.query(func.count()).select_from(totals_subquery).scalar() or 0
+
+    rows = (
+        query.order_by(total_expr.desc(), bills_count_expr.desc(), merchant_name.asc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    items = []
+    for row in rows:
+        bills_count = int(row.bills_count or 0)
+        total_spend = row.total_spend or 0
+        average_bill = (total_spend / bills_count) if bills_count else 0
+        items.append(
+            MerchantInsightItem(
+                merchant_id=row.merchant_id,
+                merchant_name=row.merchant_name,
+                total_spend=total_spend,
+                bills_count=bills_count,
+                average_bill=average_bill,
+                first_bill_month=(
+                    row.first_bill.strftime("%Y-%m") if row.first_bill else None
+                ),
+                last_bill_month=(
+                    row.last_bill.strftime("%Y-%m") if row.last_bill else None
+                ),
+            )
+        )
+
+    return MerchantInsightsResponse(year=selected_year, total=total, items=items)
 
 
 @router.get("/category-month", response_model=CategoryMonthDetailResponse)

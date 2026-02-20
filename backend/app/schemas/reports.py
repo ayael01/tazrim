@@ -105,3 +105,19 @@ class CategoryMonthMerchantsResponse(BaseModel):
 class MerchantMonthListResponse(BaseModel):
     month: str
     items: List[MerchantTotal]
+
+
+class MerchantInsightItem(BaseModel):
+    merchant_id: Optional[int]
+    merchant_name: str
+    total_spend: Decimal
+    bills_count: int
+    average_bill: Decimal
+    first_bill_month: Optional[str]
+    last_bill_month: Optional[str]
+
+
+class MerchantInsightsResponse(BaseModel):
+    year: int
+    total: int
+    items: List[MerchantInsightItem]

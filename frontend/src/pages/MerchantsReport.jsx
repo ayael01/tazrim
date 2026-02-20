@@ -308,7 +308,11 @@ export default function MerchantsReport() {
           {merchants.map((item) => (
             <li
               key={item.id}
-              onClick={() => navigate(`/merchants/${item.id}`, { state: { year } })}
+              onClick={() =>
+                navigate(`/merchants/${item.id}`, {
+                  state: { year, from: "/merchants" },
+                })
+              }
             >
               <span>{item.name}</span>
               <strong>{formatMoney(item.total)}</strong>

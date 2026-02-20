@@ -83,6 +83,16 @@ export default function MerchantDetail() {
   }, [location.state?.year]);
   const [year, setYear] = useState(initialReportYear);
   const [reportYear] = useState(initialReportYear);
+  const reportFilters = useMemo(
+    () => location.state?.filters ?? null,
+    [location.state?.filters]
+  );
+  const reportFrom = useMemo(() => {
+    if (location.state?.from === "/merchants/insights") {
+      return "/merchants/insights";
+    }
+    return "/merchants";
+  }, [location.state?.from]);
   const [years, setYears] = useState([]);
   const [data, setData] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -220,7 +230,14 @@ export default function MerchantDetail() {
           </div>
           <button
             className="ghost-button"
-            onClick={() => navigate("/merchants", { state: { year: reportYear } })}
+            onClick={() =>
+              navigate(reportFrom, {
+                state: {
+                  year: reportYear,
+                  ...(reportFilters ? { filters: reportFilters } : {}),
+                },
+              })
+            }
           >
             Back to report
           </button>
